@@ -19,6 +19,11 @@ code, so workstreams start from project skeleton and move through auth,
 registry, host profile API, patched Paseo web integration, smoke tests, and
 generic development-machine deployment.
 
+Dispatch Engine should not launch all ready workstreams at once. The first
+automated run should cover workstreams 01-08 only. Workstreams 09 and 10 are
+operator-gated after local smoke passes because they require deployment-target
+selection and real-machine credentials outside the public repo.
+
 ## Workstreams
 
 | ID | Scope | Status | Owner | Branch / PR | Depends on | Updated |
@@ -48,7 +53,9 @@ generic development-machine deployment.
 - Open questions: upstream Paseo offer schema and `HostProfile` shape must be
   confirmed before parser and patch work.
 - Workstreams: 10
-- Next owner: implementation agent should start with `workstreams/01-project-skeleton.md`
+- Next owner: implementation agent should start with `workstreams/01-project-skeleton.md`.
+  A Dispatch Engine plan should initially include workstreams 01-08 and leave
+  09-10 pending until the operator explicitly approves deployment validation.
 - Validation expectation: each workstream records narrow validation; full MVP
   acceptance requires build, unit/API tests, e2e or documented smoke, patched
   web build, and real daemon smoke.

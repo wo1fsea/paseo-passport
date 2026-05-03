@@ -321,6 +321,12 @@ reproducible patches must remain public with license notices.
 Deployment docs must stay generic and avoid machine-specific hostnames,
 addresses, SSH users, credentials, or unrelated service details.
 
+This work is operator-gated for Dispatch Engine. Automated implementation may
+create deployment artifacts and validate them locally, but it must not attempt
+to SSH, pick a real target, bind public ports, or run a live development-machine
+deployment unless the operator has explicitly approved the target and access
+path after local smoke passes.
+
 Required shape:
 
 - Clone the repo on a development deployment machine.
@@ -371,7 +377,8 @@ Additional checks:
 - Confirm an authenticated workspace shows at least one imported machine.
 - Confirm a real daemon can run at least one agent session through the workspace.
 - Confirm the development-machine deployment uses a local high port and HTTPS
-  entry point for real use.
+  entry point for real use, or record that live deployment validation was
+  skipped because no operator-approved target was provided.
 
 ## Risks And Follow-ups
 
@@ -382,7 +389,8 @@ Additional checks:
   workstream before serving the workspace.
 - Browser receives machine connection material after login. This is accepted for
   the single-user MVP and must be revisited before any multi-user design.
-- Development-machine deployment remains intentionally generic. Concrete
-  infrastructure details belong in private operator notes, not this public repo.
+- Development-machine deployment remains intentionally generic and
+  operator-gated. Concrete infrastructure details belong in private operator
+  notes, not this public repo.
 - Future specs should cover enrollment sidecar, rotation, audit events, and
   multi-user authorization only after this MVP loop works.
