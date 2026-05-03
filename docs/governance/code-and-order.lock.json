@@ -1,0 +1,250 @@
+{
+  "adopted": false,
+  "config": {
+    "spec_id": "rfc-0001-initial-governance",
+    "suite": "universal",
+    "tdd": "strict"
+  },
+  "initialized_at": "2026-05-03T15:57:22Z",
+  "last_updated_at": "2026-05-03T16:08:05Z",
+  "managed_files": [
+    {
+      "base_hash": "sha256:9e7dc3542f8531c188553b87cbe129bb6c62f956537a61536432d5d5de241024",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:9e7dc3542f8531c188553b87cbe129bb6c62f956537a61536432d5d5de241024",
+      "path": ".gitignore",
+      "template_id": ".gitignore"
+    },
+    {
+      "base_hash": "sha256:fb49e24887a0048eaa457b4556722c6c87941d1b52c39e9f03ac47265ddcf099",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:fb49e24887a0048eaa457b4556722c6c87941d1b52c39e9f03ac47265ddcf099",
+      "path": "AGENTS.md",
+      "template_id": "AGENTS.md"
+    },
+    {
+      "base_hash": "sha256:f12e8875abbcb6797dee2c0cbf87262a90d8e0ec8c1ed8e721540cc33807a05d",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:f12e8875abbcb6797dee2c0cbf87262a90d8e0ec8c1ed8e721540cc33807a05d",
+      "path": "docs/governance/README.md",
+      "template_id": "docs:governance:README.md"
+    },
+    {
+      "base_hash": "sha256:5ebb37411e68a08a8c4ac3257fd877ca614c268a4af87aea08d83a0e67bdab27",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:5ebb37411e68a08a8c4ac3257fd877ca614c268a4af87aea08d83a0e67bdab27",
+      "path": "docs/governance/agent-context.md",
+      "template_id": "docs:governance:agent-context.md"
+    },
+    {
+      "base_hash": "sha256:5d7ea07c6f6e7087cf54f74588600e06a0a98d24f66ec62c362d19dcd398291d",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:5d7ea07c6f6e7087cf54f74588600e06a0a98d24f66ec62c362d19dcd398291d",
+      "path": "docs/governance/development-workflow.md",
+      "template_id": "docs:governance:development-workflow.md"
+    },
+    {
+      "base_hash": "sha256:3902c51e2285000ce86855f3beb48b231d832c3bd386f09f0a446949d4ebfc5b",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:3902c51e2285000ce86855f3beb48b231d832c3bd386f09f0a446949d4ebfc5b",
+      "path": "docs/governance/change-gate.md",
+      "template_id": "docs:governance:change-gate.md"
+    },
+    {
+      "base_hash": "sha256:77fbf9e3c6cb45bc487fe8ce706a682aeb710646e1ba623215d517a14ea466ae",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:77fbf9e3c6cb45bc487fe8ce706a682aeb710646e1ba623215d517a14ea466ae",
+      "path": "docs/governance/code-quality.md",
+      "template_id": "docs:governance:code-quality.md"
+    },
+    {
+      "base_hash": "sha256:53834de3fb65fa672b905945915237c1f4975d305fcdc72510f67875eedc9796",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:53834de3fb65fa672b905945915237c1f4975d305fcdc72510f67875eedc9796",
+      "path": "docs/governance/documentation-standards.md",
+      "template_id": "docs:governance:documentation-standards.md"
+    },
+    {
+      "base_hash": "sha256:2fa16c6755acdb6674a7f915bfb1219aaed62aee0aeaba12fe4c7bd852a29efb",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:2fa16c6755acdb6674a7f915bfb1219aaed62aee0aeaba12fe4c7bd852a29efb",
+      "path": "docs/governance/temp-artifacts.md",
+      "template_id": "docs:governance:temp-artifacts.md"
+    },
+    {
+      "base_hash": "sha256:d448d14b3140ec929e7a675215a179925a5d5b7dec18d57ca642f4bb91095911",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:d448d14b3140ec929e7a675215a179925a5d5b7dec18d57ca642f4bb91095911",
+      "path": "docs/governance/compact-specs.md",
+      "template_id": "docs:governance:compact-specs.md"
+    },
+    {
+      "base_hash": "sha256:f95292f696e96ddbe09c71c3504284389ed710d4697821006f9baa7b2054319d",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:f95292f696e96ddbe09c71c3504284389ed710d4697821006f9baa7b2054319d",
+      "path": "docs/governance/spec-first-delivery.md",
+      "template_id": "docs:governance:spec-first-delivery.md"
+    },
+    {
+      "base_hash": "sha256:8130a82ab5b8580d234f0e16b6c016d0a7cbb9475b6bd7b7b3c1f8936f17271c",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:8130a82ab5b8580d234f0e16b6c016d0a7cbb9475b6bd7b7b3c1f8936f17271c",
+      "path": "docs/governance/spec-production.md",
+      "template_id": "docs:governance:spec-production.md"
+    },
+    {
+      "base_hash": "sha256:f3e9ac4c88abf53c6513080233176925873b1fe694932e55be53de27511ed02b",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:f3e9ac4c88abf53c6513080233176925873b1fe694932e55be53de27511ed02b",
+      "path": "docs/governance/spec-workflow.md",
+      "template_id": "docs:governance:spec-workflow.md"
+    },
+    {
+      "base_hash": "sha256:9395b5dc3964412e06060e70418fe6fabf96c24134a2e951334e7d32b33fc5e2",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:9395b5dc3964412e06060e70418fe6fabf96c24134a2e951334e7d32b33fc5e2",
+      "path": "docs/governance/spec-id-policy.md",
+      "template_id": "docs:governance:spec-id-policy.md"
+    },
+    {
+      "base_hash": "sha256:095331afa6e560a570dca33818b1f3bb975258e99bef7d3802ab691b036354db",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:095331afa6e560a570dca33818b1f3bb975258e99bef7d3802ab691b036354db",
+      "path": "docs/governance/spec-execution-status.md",
+      "template_id": "docs:governance:spec-execution-status.md"
+    },
+    {
+      "base_hash": "sha256:0cfe02b393c1332378ab4bd88a427a350a03f759ca94841e56650ce60964e205",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:0cfe02b393c1332378ab4bd88a427a350a03f759ca94841e56650ce60964e205",
+      "path": "docs/governance/multi-agent-spec-flow.md",
+      "template_id": "docs:governance:multi-agent-spec-flow.md"
+    },
+    {
+      "base_hash": "sha256:9043effa33386b85898495638e5d1867ff331310c986de43c97a5f2cd577cb8d",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:9043effa33386b85898495638e5d1867ff331310c986de43c97a5f2cd577cb8d",
+      "path": "docs/governance/validation-workflow.md",
+      "template_id": "docs:governance:validation-workflow.md"
+    },
+    {
+      "base_hash": "sha256:0925abceabad6eebd626c93fc6c821bb51bd9b223dec3bbbc94aeb2efc8da722",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:0925abceabad6eebd626c93fc6c821bb51bd9b223dec3bbbc94aeb2efc8da722",
+      "path": "docs/governance/review-workflow.md",
+      "template_id": "docs:governance:review-workflow.md"
+    },
+    {
+      "base_hash": "sha256:0470dabfe5d66d9dbc8a15a29402d6ffcfc5ae5aa4f364fabc5f6cd4214dd990",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:0470dabfe5d66d9dbc8a15a29402d6ffcfc5ae5aa4f364fabc5f6cd4214dd990",
+      "path": "docs/governance/governance-maintenance.md",
+      "template_id": "docs:governance:governance-maintenance.md"
+    },
+    {
+      "base_hash": "sha256:54947ba2ea84043a426fbba9e09301acf8641f38280543ee9527d611e6261a4c",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:54947ba2ea84043a426fbba9e09301acf8641f38280543ee9527d611e6261a4c",
+      "path": "specs/README.md",
+      "template_id": "specs:README.md"
+    },
+    {
+      "base_hash": "sha256:d7b03137596a7fce5809b5f084449549084cf6c987975050a822b217481f30f5",
+      "base_source_commit": "663eb9403a2c2face2d73675356a6bc4e39b593a",
+      "last_action": "local-customized",
+      "local_hash_at_write": "sha256:455f7459749a98e5dc48a06130f05503ae693d66c7b2862541cb041ae33e4080",
+      "path": "specs/rfc-0001-initial-governance/PRODUCT.md",
+      "template_id": "specs:rfc-0001-initial-governance:PRODUCT.md"
+    },
+    {
+      "base_hash": "sha256:b17be663418b2e3bd33d69cd09f51a9784984291cc9f5ebeb0ef28d73d91f5e2",
+      "base_source_commit": "663eb9403a2c2face2d73675356a6bc4e39b593a",
+      "last_action": "local-customized",
+      "local_hash_at_write": "sha256:c140436b1c7931931d55eeac628e5fa67d824c7d4a23337d3320817df1e58893",
+      "path": "specs/rfc-0001-initial-governance/TECH.md",
+      "template_id": "specs:rfc-0001-initial-governance:TECH.md"
+    },
+    {
+      "base_hash": "sha256:025d27925957262a84faa73e29413ff306b1b841eff8ad5fb8445933c706e19d",
+      "base_source_commit": "663eb9403a2c2face2d73675356a6bc4e39b593a",
+      "last_action": "local-customized",
+      "local_hash_at_write": "sha256:f2dccaea9bd3d83dbb71a30418eaa50586954051696c493151828fa43197cb4c",
+      "path": "specs/rfc-0001-initial-governance/STATUS.md",
+      "template_id": "specs:rfc-0001-initial-governance:STATUS.md"
+    },
+    {
+      "base_hash": "sha256:557da7c8a46cba8f78ce3d939098217fad3c749f27fd19711f9a37bfc5236962",
+      "base_source_commit": "663eb9403a2c2face2d73675356a6bc4e39b593a",
+      "last_action": "local-customized",
+      "local_hash_at_write": "sha256:cd24b816df9435bbafd8b62a9a1ec11c0277eb4119aabff6cda0414000b42d03",
+      "path": "specs/rfc-0001-initial-governance/workstreams/01-implementation.md",
+      "template_id": "specs:rfc-0001-initial-governance:workstreams:01-implementation.md"
+    },
+    {
+      "base_hash": "sha256:63f7330527b5bde0237d7e6b8a8ecefa40bf07dd9398d551af119ec09117dc3e",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:63f7330527b5bde0237d7e6b8a8ecefa40bf07dd9398d551af119ec09117dc3e",
+      "path": "docs/governance/tdd-workflow.md",
+      "template_id": "docs:governance:tdd-workflow.md"
+    },
+    {
+      "base_hash": "sha256:e72a48b5e1b6c2a74ab065ed1e788b394a1b6534b7a5546ab100580e1621e0e4",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:e72a48b5e1b6c2a74ab065ed1e788b394a1b6534b7a5546ab100580e1621e0e4",
+      "path": "CLAUDE.md",
+      "template_id": "CLAUDE.md"
+    },
+    {
+      "base_hash": "sha256:895c22bbfba5952f02df1228c54b2753647cc9292e5ae8da76403d808fa93d53",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:895c22bbfba5952f02df1228c54b2753647cc9292e5ae8da76403d808fa93d53",
+      "path": "GEMINI.md",
+      "template_id": "GEMINI.md"
+    },
+    {
+      "base_hash": "sha256:58f924f5c3feccb3df494991f626b9ddd014e74a358083e761bffbbaf39f0f1f",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "current",
+      "local_hash_at_write": "sha256:58f924f5c3feccb3df494991f626b9ddd014e74a358083e761bffbbaf39f0f1f",
+      "path": ".github/copilot-instructions.md",
+      "template_id": ".github:copilot-instructions.md"
+    },
+    {
+      "base_hash": "sha256:2b3105230d1f0d7a91df276cb86db89bf93a4b47d48b1b1113cd8a9f4daabd0a",
+      "base_source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+      "last_action": "lock-outdated",
+      "local_hash_at_write": "sha256:2b3105230d1f0d7a91df276cb86db89bf93a4b47d48b1b1113cd8a9f4daabd0a",
+      "path": ".github/pull_request_template.md",
+      "template_id": ".github:pull_request_template.md"
+    }
+  ],
+  "schema_version": 1,
+  "source_commit": "95ba95cee7ff47397a9565aec715c93db203f34e",
+  "source_dirty": false,
+  "source_ref": "main",
+  "source_repo": "https://github.com/wo1fsea/code-and-order.git",
+  "tool": "code-and-order"
+}
