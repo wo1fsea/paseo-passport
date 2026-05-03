@@ -25,11 +25,9 @@ Specs live under `specs/`.
 Current accepted spec:
 
 - `specs/rfc-0001-initial-governance/`: repository governance bootstrap.
-
-Planned next spec:
-
-- `rfc-0002-single-user-mvp`: sidecar web service, TOTP login, machine registry
-  model, and deployment plan.
+- `specs/rfc-0002-single-user-mvp/`: sidecar web service, TOTP login, machine
+  registry model, patched Paseo workspace, and generic development-machine
+  deployment plan.
 
 ## Local Validation
 
