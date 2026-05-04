@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import zlib from "node:zlib";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { readCookie } from "../auth/middleware";
 import { authenticateSession, SESSION_COOKIE_NAME } from "../auth/sessions";
 import type { PassportConfig } from "../config";
@@ -24,7 +25,7 @@ export async function registerWorkspaceStaticRoutes(
       return;
     }
 
-    reply.type("text/html").send(readStaticFile(options.config.staticDir, "index.html"));
+    sendStaticFile(request, reply, options.config.staticDir, "index.html");
   });
 
   server.get("/*", async (request, reply) => {
@@ -45,7 +46,7 @@ export async function registerWorkspaceStaticRoutes(
       return;
     }
 
-    reply.type(contentTypeFor(fileName)).send(readStaticFile(options.config.staticDir, fileName));
+    sendStaticFile(request, reply, options.config.staticDir, fileName);
   });
 }
 
@@ -77,6 +78,58 @@ function readStaticFile(staticDir: string, fileName: string): Buffer {
   }
 
   return fs.readFileSync(filePath);
+}
+
+function sendStaticFile(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  staticDir: string,
+  fileName: string
+): void {
+  const body = readStaticFile(staticDir, fileName);
+  reply.type(contentTypeFor(fileName));
+  reply.header("Cache-Control", cacheControlFor(fileName));
+  if (isGzipCandidate(fileName)) {
+    reply.header("Vary", "Accept-Encoding");
+  }
+
+  if (shouldGzip(request, fileName)) {
+    reply.header("Content-Encoding", "gzip");
+    reply.send(zlib.gzipSync(body));
+    return;
+  }
+
+  reply.send(body);
+}
+
+function shouldGzip(request: FastifyRequest, fileName: string): boolean {
+  const acceptEncoding = request.headers["accept-encoding"];
+  if (typeof acceptEncoding !== "string" || !/\bgzip\b/i.test(acceptEncoding)) {
+    return false;
+  }
+
+  return isGzipCandidate(fileName);
+}
+
+function isGzipCandidate(fileName: string): boolean {
+  switch (path.extname(fileName)) {
+    case ".css":
+    case ".html":
+    case ".js":
+    case ".json":
+    case ".svg":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function cacheControlFor(fileName: string): string {
+  if (path.basename(fileName) === "index.html") {
+    return "no-cache";
+  }
+
+  return "public, max-age=31536000, immutable";
 }
 
 function isApiPath(url: string): boolean {

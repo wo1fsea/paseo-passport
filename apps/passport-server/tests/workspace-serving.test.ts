@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import zlib from "node:zlib";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -125,6 +126,25 @@ describe("workspace static serving", () => {
     expect(shell.body).toContain("<title>Paseo</title>");
     expect(asset.statusCode).toBe(200);
     expect(asset.body).toContain("__paseoApp");
+  });
+
+  it("gzip-compresses generated text assets when the browser supports it", async () => {
+    await buildWorkspaceServer();
+    const cookie = await loginCookie();
+
+    const asset = await server!.inject({
+      method: "GET",
+      url: "/_expo/static/js/web/index-test.js",
+      headers: {
+        cookie,
+        "accept-encoding": "br, gzip"
+      }
+    });
+
+    expect(asset.statusCode).toBe(200);
+    expect(asset.headers["content-encoding"]).toBe("gzip");
+    expect(asset.headers.vary).toContain("Accept-Encoding");
+    expect(zlib.gunzipSync(asset.rawPayload).toString("utf8")).toContain("__paseoApp");
   });
 
   it("records sanitized workspace-open history for authenticated workspace documents", async () => {
