@@ -3,8 +3,8 @@ id: 01-project-skeleton
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated
+owner: worker-001
 branch:
 pr:
 files:
@@ -18,8 +18,8 @@ files:
   - apps/passport-server/src/config.ts
   - apps/passport-server/tests/health.test.ts
 depends_on: []
-claimed_at:
-lease_expires_at:
+claimed_at: 2026-05-04T01:13:24+08:00
+lease_expires_at: 2026-05-04T03:13:24+08:00
 updated: 2026-05-04
 ---
 
@@ -78,3 +78,8 @@ Owner to unblock: Not applicable.
 ## Activity Log
 
 - 2026-05-04: workstream defined.
+- 2026-05-04: claimed by worker-001 for Dispatch Engine run 20260503T170721136859Z.
+- 2026-05-04: moved to in_progress after dependency install and red health test evidence.
+- 2026-05-04: moved to implemented after adding npm workspace, TypeScript baseline, Fastify bootstrap, config defaults, and health endpoint.
+- 2026-05-04: moved to validating for build, test, dev server, and curl checks.
+- 2026-05-04: moved to validated after listed workstream validation completed.

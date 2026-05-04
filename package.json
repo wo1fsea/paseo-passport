@@ -1,0 +1,24 @@
+{
+  "name": "paseo-passport",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace @paseo-passport/passport-server run build",
+    "build:paseo-web": "tsx scripts/build-paseo-web.ts",
+    "dev": "npm --workspace @paseo-passport/passport-server run dev",
+    "test": "npm --workspace @paseo-passport/passport-server run test --",
+    "test:e2e": "npm --workspace @paseo-passport/passport-server run test -- --run local-smoke"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

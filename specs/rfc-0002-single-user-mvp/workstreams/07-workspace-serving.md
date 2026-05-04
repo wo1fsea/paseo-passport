@@ -3,8 +3,8 @@ id: 07-workspace-serving
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated
+owner: worker-008
 branch:
 pr:
 files:
@@ -14,8 +14,8 @@ files:
 depends_on:
   - 02-auth-and-sessions
   - 06-paseo-vendor-and-patch
-claimed_at:
-lease_expires_at:
+claimed_at: 2026-05-04T02:31:02+08:00
+lease_expires_at: 2026-05-04T04:31:02+08:00
 updated: 2026-05-04
 ---
 
@@ -67,3 +67,5 @@ Owner to unblock: Not applicable.
 ## Activity Log
 
 - 2026-05-04: workstream defined.
+- 2026-05-04: worker-008 claimed workspace serving workstream.
+- 2026-05-04: worker-008 added authenticated non-API workspace fallback coverage and validated required commands.

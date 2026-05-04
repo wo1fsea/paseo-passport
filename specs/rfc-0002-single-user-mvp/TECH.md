@@ -142,10 +142,16 @@ PASSPORT_DATA_KEY=
 PASSPORT_COOKIE_SECURE=false
 PASSPORT_DB_PATH=./data/passport.sqlite
 PASSPORT_STATIC_DIR=./public
+PASSPORT_LOCAL_AUTH_BYPASS=false
 ```
 
 Production-like deployments must set `PASSPORT_COOKIE_SECURE=true` and expose
 the service only through HTTPS. Secrets must be injected outside git.
+
+`PASSPORT_LOCAL_AUTH_BYPASS=true` is allowed only for local test runs bound to
+`127.0.0.1`, `localhost`, or `::1`. When this flag is enabled, the server must
+validate the bind host during startup and fail closed for any non-local bind
+address. The bypass must not be documented or accepted as a deployment mode.
 
 ## Database Contract
 
@@ -316,6 +322,24 @@ Implementation must record upstream Paseo source and license handling in
 `docs/upstream-paseo.md`. Paseo is AGPL-3.0-or-later, so modified web source or
 reproducible patches must remain public with license notices.
 
+## Local Upstream Paseo Test Contract
+
+Local upstream Paseo installation and pairing is a follow-up validation path,
+not a change to phase-A acceptance. The operator may approve a workstream that
+installs and starts upstream Paseo locally, obtains a pairing offer from that
+test environment, imports the offer into Passport, and verifies that the
+workspace can use the resulting host profile.
+
+Rules:
+
+- Treat upstream Paseo as an operator-controlled local test dependency.
+- Do not commit raw pairing offers, local daemon credentials, generated local
+  config, or machine-specific addresses.
+- Keep the phase-A workspace shell until the full upstream web build is pinned,
+  patched, built, and validated.
+- Record the confirmed upstream install/start/pairing commands in
+  `docs/upstream-paseo.md` after verification.
+
 ## Development-Machine Deployment
 
 Deployment docs must stay generic and avoid machine-specific hostnames,
@@ -345,12 +369,14 @@ Required shape:
 - Session cookie must be `HttpOnly`; production-like HTTPS deployments must use
   `Secure`.
 - Login attempts must be rate-limited.
-- Admin APIs and workspace APIs must require auth.
+- Admin APIs and workspace APIs must require auth unless the explicit
+  loopback-only local auth bypass is enabled for a local test run.
 - Pairing offers are treated as machine-control credentials.
 - Raw offers must not appear in access logs, error logs, or API responses.
 - Provider credentials remain on each daemon machine.
-- Development bypasses such as `DEV_SKIP_AUTH` are forbidden for production-like
-  runs and should be avoided entirely unless a separate spec approves them.
+- Development bypasses are forbidden for production-like runs. The only
+  approved bypass in this spec is `PASSPORT_LOCAL_AUTH_BYPASS=true`, and only
+  when startup validates a loopback/local-only bind address.
 
 ## Validation Plan
 

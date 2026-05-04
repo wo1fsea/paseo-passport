@@ -1,0 +1,92 @@
+diff --git a/packages/app/src/runtime/host-runtime.ts b/packages/app/src/runtime/host-runtime.ts
+index 351b5a1..847fb91 100644
+--- a/packages/app/src/runtime/host-runtime.ts
++++ b/packages/app/src/runtime/host-runtime.ts
+@@ -39,6 +39,7 @@ import {
+ } from "@/desktop/daemon/desktop-daemon-transport";
+ import { replaceFetchedAgentDirectory } from "@/utils/agent-directory-sync";
+ import { useSessionStore } from "@/stores/session-store";
++import { loadPassportHostProfiles } from "@/runtime/passport-hosts";
+
+ export type HostRuntimeConnectionStatus = "idle" | "connecting" | "online" | "offline" | "error";
+
+@@ -179,6 +180,20 @@ function readFetchAgentsNextCursor(
+   return null;
+ }
+
++function mergeHostProfiles(
++  localHosts: readonly HostProfile[],
++  passportHosts: readonly HostProfile[],
++): HostProfile[] {
++  const next = new Map<string, HostProfile>();
++  for (const host of localHosts) {
++    next.set(host.serverId, host);
++  }
++  for (const host of passportHosts) {
++    next.set(host.serverId, host);
++  }
++  return Array.from(next.values());
++}
++
+ function toActiveConnection(connection: HostConnection): ActiveConnection {
+   if (connection.type === "directSocket") {
+     return {
+@@ -1240,6 +1255,7 @@ export class HostRuntimeStore {
+
+   private async runBoot(): Promise<void> {
+     await this.loadFromStorage();
++    await this.loadPassportHosts();
+
+     const override = readConfiguredLocalDaemonOverride();
+     if (override) {
+@@ -1288,6 +1304,21 @@ export class HostRuntimeStore {
+     }
+   }
+
++  private async loadPassportHosts(): Promise<void> {
++    try {
++      const passportHosts = await loadPassportHostProfiles();
++      if (passportHosts.length === 0) {
++        return;
++      }
++      const merged = mergeHostProfiles(this.hosts, passportHosts);
++      this.hosts = merged;
++      this.syncHosts(merged);
++      this.emitHostList();
++    } catch (error) {
++      console.error("[HostRuntime] Failed to load Passport hosts", error);
++    }
++  }
++
+   private async bootstrapDefaultLocalhost(): Promise<void> {
+     const connection = connectionFromListen(LOCALHOST_FALLBACK_ENDPOINT);
+     if (!connection || registryHasConnection(this.hosts, connection)) {
+diff --git a/packages/app/src/runtime/passport-hosts.ts b/packages/app/src/runtime/passport-hosts.ts
+new file mode 100644
+index 0000000..05a0138
+--- /dev/null
++++ b/packages/app/src/runtime/passport-hosts.ts
+@@ -0,0 +1,23 @@
++import { normalizeStoredHostProfile, type HostProfile } from "@/types/host-connection";
++
++export async function loadPassportHostProfiles(
++  fetchImpl: typeof fetch = fetch,
++): Promise<HostProfile[]> {
++  const response = await fetchImpl("/api/passport/hosts", {
++    credentials: "include",
++  });
++  if (response.status === 401) {
++    return [];
++  }
++  if (!response.ok) {
++    throw new Error("Unable to load Passport hosts.");
++  }
++
++  const parsed = (await response.json()) as unknown;
++  if (!Array.isArray(parsed)) {
++    return [];
++  }
++  return parsed
++    .map((entry) => normalizeStoredHostProfile(entry))
++    .filter((entry): entry is HostProfile => entry !== null);
++}

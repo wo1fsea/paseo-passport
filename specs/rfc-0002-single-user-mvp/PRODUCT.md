@@ -71,6 +71,9 @@ Non-goals:
 12. The MVP can be run locally from a clean checkout with documented commands.
 13. The development-machine deployment binds the app to a local high port first;
     public exposure requires an explicit HTTPS entry point.
+14. A local test auth bypass may exist only as an explicit loopback/local-only
+    mode. If the bypass is enabled while the server is not bound to a local-only
+    host, the server must fail closed instead of serving protected routes.
 
 ## States And Edge Cases
 
@@ -90,6 +93,10 @@ Non-goals:
   `/api/passport/hosts`.
 - Paseo web patch fetch failure: local hosts still load; Passport host loading
   surfaces a safe error path without exposing secrets.
+- Local test auth bypass: when explicitly enabled on a local-only bind address,
+  protected pages and APIs behave as the configured single-user test session.
+  When enabled on any non-local bind address, startup fails before accepting
+  requests.
 
 ## Open Questions
 
@@ -97,5 +104,8 @@ Non-goals:
   before implementing the parser.
 - Exact current `HostProfile` TypeScript shape must be confirmed before
   finalizing `/api/passport/hosts`.
+- Exact upstream Paseo local install/start command and test pairing flow must be
+  confirmed before replacing the phase-A workspace shell with a full upstream
+  web build.
 - The final HTTPS exposure mechanism for a development machine is intentionally
   deferred to deployment configuration, not encoded in the MVP product behavior.

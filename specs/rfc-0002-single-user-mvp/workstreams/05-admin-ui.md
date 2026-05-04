@@ -3,8 +3,8 @@ id: 05-admin-ui
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated
+owner: worker-006
 branch:
 pr:
 files:
@@ -13,8 +13,8 @@ files:
 depends_on:
   - 02-auth-and-sessions
   - 03-machine-registry
-claimed_at:
-lease_expires_at:
+claimed_at: 2026-05-03T18:14:08Z
+lease_expires_at: 2026-05-03T20:14:08Z
 updated: 2026-05-04
 ---
 
@@ -68,3 +68,9 @@ Owner to unblock: Not applicable.
 ## Activity Log
 
 - 2026-05-04: workstream defined.
+- 2026-05-04: worker-006 claimed workstream for Dispatch Engine run
+  20260503T180445882676Z.
+- 2026-05-04: worker-006 added admin UI workflow smoke coverage and moved to
+  validation.
+- 2026-05-04: worker-006 validated admin UI build and focused tests; full suite
+  remains blocked by out-of-scope workspace static fixture failure.

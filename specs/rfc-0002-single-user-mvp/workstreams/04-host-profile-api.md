@@ -3,8 +3,8 @@ id: 04-host-profile-api
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated
+owner: worker-005
 branch:
 pr:
 files:
@@ -13,8 +13,8 @@ files:
   - apps/passport-server/tests/hosts-api.test.ts
 depends_on:
   - 03-machine-registry
-claimed_at:
-lease_expires_at:
+claimed_at: 2026-05-04T02:13:59+08:00
+lease_expires_at: 2026-05-04T04:13:59+08:00
 updated: 2026-05-04
 ---
 
@@ -65,3 +65,5 @@ Owner to unblock: Not applicable.
 ## Activity Log
 
 - 2026-05-04: workstream defined.
+- 2026-05-04: worker-005 claimed workstream for host profile API validation and implementation.
+- 2026-05-04: worker-005 validated host profile API with exact-shape, deleted-machine exclusion, and secret-leakage coverage.
