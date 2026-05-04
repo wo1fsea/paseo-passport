@@ -143,6 +143,15 @@ describe("admin UI", () => {
     expect(response.body).toContain("reset-totp-enrollment");
     expect(response.body).toContain("/api/auth/enrollment/reset");
     expect(response.body).toContain('class="button outline" href="/"');
+    expect(response.body).toContain('id="import-status"');
+    expect(response.body).toContain('aria-live="polite"');
+    expect(response.body).toContain('data-empty-label="No machines imported."');
+    expect(response.body).toContain("refreshMachinesAfterImport");
+    expect(response.body).toContain('setImportStatus("success"');
+    expect(response.body).toContain("Imported ");
+    expect(response.body).toContain("Active hosts refreshed.");
+    expect(response.body).toContain("importButton.disabled = true");
+    expect(response.body).toContain("importButton.textContent = \"Importing\"");
     expect(response.body).toContain('id="reset-confirmation" hidden');
     expect(response.body).toContain("resetConfirmation.hidden = false");
     expect(response.body).toContain('button.className = "small outline"');

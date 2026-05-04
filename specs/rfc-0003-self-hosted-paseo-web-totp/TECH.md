@@ -308,6 +308,10 @@ Required visual constraints:
 - Registry and history entries render as dense Paseo-style rows with primary
   and secondary text, optional trailing actions, and no per-row heavy card
   chrome.
+- Machine import must show visible success/failure feedback. A successful
+  import refreshes the Active hosts registry list in place and announces that
+  the hosts were refreshed, so the operator does not need to manually reload the
+  page to confirm the imported machine is active.
 - Login and first-enrollment flows use compact modal/sheet-like panels inside a
   full-screen app surface. The QR block must be neutral, readable, and stable on
   narrow mobile widths.
@@ -441,6 +445,8 @@ Additional required checks:
 - Production-like browser smoke confirms the public HTTPS deployment is a
   secure context, the registered `PC-WIN11` host appears in the self-hosted UI,
   and the relay WebSocket is opened from the HTTPS origin.
+- Admin UI smoke confirms importing an offer displays success feedback and
+  refreshes the Active hosts list without requiring a page reload.
 
 ## Risks And Follow-ups
 

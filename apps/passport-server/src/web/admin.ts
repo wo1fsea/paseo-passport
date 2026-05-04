@@ -240,6 +240,7 @@ function renderMachinesPage(): string {
               <textarea name="offerUrl" rows="5" required></textarea>
             </label>
             <p id="import-error" class="error" hidden>Import failed.</p>
+            <p id="import-status" class="status" aria-live="polite" hidden></p>
             <button class="primary" type="submit">Import</button>
           </form>
           <section class="panel">
@@ -247,7 +248,7 @@ function renderMachinesPage(): string {
               <p class="eyebrow">Active hosts</p>
               <h2>Registry</h2>
             </div>
-            <div id="machine-list" class="machine-list"></div>
+            <div id="machine-list" class="machine-list" data-empty-label="No machines imported."></div>
           </section>
           <section class="panel">
             <div class="panel-heading">
@@ -273,6 +274,17 @@ function renderMachinesPage(): string {
         </section>
       </main>
       <script>
+        const importForm = document.getElementById("import-form");
+        const importError = document.getElementById("import-error");
+        const importStatus = document.getElementById("import-status");
+        const importButton = importForm.querySelector("button[type='submit']");
+
+        function setImportStatus(kind, message) {
+          importStatus.dataset.state = kind;
+          importStatus.textContent = message;
+          importStatus.hidden = message.length === 0;
+        }
+
         async function loadMachines() {
           const response = await fetch("/api/admin/machines", { credentials: "include" });
           if (response.status === 401) {
@@ -285,9 +297,9 @@ function renderMachinesPage(): string {
           if (data.machines.length === 0) {
             const empty = document.createElement("p");
             empty.className = "muted";
-            empty.textContent = "No machines imported.";
+            empty.textContent = list.dataset.emptyLabel || "No machines imported.";
             list.append(empty);
-            return;
+            return data;
           }
           for (const machine of data.machines) {
             const row = document.createElement("article");
@@ -312,24 +324,42 @@ function renderMachinesPage(): string {
             row.append(body, button);
             list.append(row);
           }
+          return data;
         }
 
-        document.getElementById("import-form").addEventListener("submit", async (event) => {
+        async function refreshMachinesAfterImport(machine) {
+          await loadMachines();
+          setImportStatus("success", "Imported " + machine.label + ". Active hosts refreshed.");
+        }
+
+        importForm.addEventListener("submit", async (event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
-          const response = await fetch("/api/admin/machines/import-offer", {
-            method: "POST",
-            credentials: "include",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              label: form.get("label"),
-              offerUrl: form.get("offerUrl")
-            })
-          });
-          document.getElementById("import-error").hidden = response.ok;
-          if (response.ok) {
-            event.currentTarget.reset();
-            await loadMachines();
+          importError.hidden = true;
+          setImportStatus("working", "Importing offer.");
+          importButton.disabled = true;
+          importButton.textContent = "Importing";
+          try {
+            const response = await fetch("/api/admin/machines/import-offer", {
+              method: "POST",
+              credentials: "include",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                label: form.get("label"),
+                offerUrl: form.get("offerUrl")
+              })
+            });
+            importError.hidden = response.ok;
+            if (response.ok) {
+              const data = await response.json();
+              event.currentTarget.reset();
+              await refreshMachinesAfterImport(data.machine);
+            } else {
+              setImportStatus("", "");
+            }
+          } finally {
+            importButton.disabled = false;
+            importButton.textContent = "Import";
           }
         });
 
@@ -633,6 +663,9 @@ function htmlShell(title: string, body: string): string {
     .history-row:first-child { border-top: 0; padding-top: 0; }
     .machine-row span, .history-row span, .muted { color: var(--foreground-muted); overflow-wrap: anywhere; }
     .error { color: var(--destructive); font-size: 0.75rem; font-weight: 400; }
+    .status { color: var(--foreground-muted); font-size: 0.75rem; font-weight: 400; }
+    .status[data-state="success"] { color: var(--accent-bright); }
+    .status[data-state="working"] { color: var(--foreground-muted); }
     @media (max-width: 760px) {
       .app-shell { padding: 1rem; }
       .auth-panel.compact { width: min(calc(100vw - 2rem), 17rem); }
