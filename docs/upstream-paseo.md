@@ -157,6 +157,37 @@ Do not commit raw pairing offers, relay secrets, daemon credentials, local
 provider credentials, or machine-specific upstream config. Use placeholders in
 notes and keep operator-only values outside git.
 
+## Deployment Notes
+
+The verified HK deployment uses Passport as a loopback-only Node service behind
+Caddy:
+
+```text
+public HTTPS: https://paseo.codexy.fun:6868
+Caddy:        *:80 and *:6868
+Passport:     127.0.0.1:6867
+existing TLS: *:443, reserved for Xray
+```
+
+The production-like Passport environment for this layout is:
+
+```sh
+PASSPORT_HOST=127.0.0.1
+PASSPORT_PORT=6867
+PASSPORT_COOKIE_SECURE=true
+PASSPORT_DB_PATH=/home/ubuntu/Projects/paseo-passport/data/passport.sqlite
+PASSPORT_STATIC_DIR=/home/ubuntu/Projects/paseo-passport/apps/passport-server/public
+```
+
+Do not enable `PASSPORT_LOCAL_AUTH_BYPASS` in this deployment. Caddy can obtain
+and renew the Let's Encrypt certificate because port `80` is reachable. Port
+`8443` was tested from outside and timed out, so the public HTTPS listener was
+moved to `6868`, which was already reachable.
+
+The upstream Paseo web app requires a browser secure context for its relay E2EE
+client because it depends on WebCrypto. `localhost` is acceptable for local
+testing, but public `http://` URLs are not.
+
 ## Verified Local CLI Pairing Flow
 
 The local test pairing flow was verified on 2026-05-04 with
@@ -184,6 +215,27 @@ confirm `/api/passport/hosts` returns the imported host profile. The verified
 local registration produced server id `srv_cxpKpFRXo1T0` and relay endpoint
 `relay.paseo.sh:443`. The raw offer, daemon keypair, and local daemon state must
 stay out of this repository.
+
+## Verified Real Daemon Smoke
+
+The HK deployment was verified against a real registered Windows daemon:
+
+- Label: `PC-WIN11`
+- Server id: `srv_gjx4oQjUBW00`
+- Relay endpoint: `relay.paseo.sh:443`
+- Daemon version observed by direct client probe: `0.1.62`
+- Hostname observed by direct client probe: `WO1FSEA-PC-WIN11`
+
+The HTTPS workspace loaded the self-hosted upstream Paseo UI, displayed the
+registered host and project list, and opened relay WebSocket traffic to
+`wss://relay.paseo.sh`. The earlier failure to connect from the public IP URL
+was caused by using public HTTP, not by the host registry or daemon pairing.
+
+On Windows, `paseo daemon start` can still leave a visible `node.exe` console
+depending on how it is launched. For unattended startup, prefer a Windows
+Service wrapper such as WinSW or NSSM. A Task Scheduler action using
+`wscript.exe` and a small hidden-window `.vbs` wrapper is an acceptable local
+workaround, but the native service wrapper is the cleaner operational path.
 
 ## License Handling
 

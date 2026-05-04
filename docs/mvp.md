@@ -8,7 +8,7 @@ updated: 2026-05-04
 # Paseo Passport MVP
 
 This MVP proves the single-user self-hosted Paseo loop with Passport-managed
-TOTP enrollment and a Passport-registered host fixture.
+TOTP enrollment and Passport-registered hosts.
 
 1. Configure local secrets outside git:
 
@@ -86,6 +86,32 @@ Full-suite status:
 
 - Green as of 2026-05-04. The stale tests outside the final smoke scope were
   updated for the current TOTP-only auth and upstream-web MVP.
+
+Live HK deployment evidence from 2026-05-04:
+
+- Public entry point: `https://paseo.codexy.fun:6868`.
+- Caddy terminates HTTPS on `*:6868`, redirects `http://paseo.codexy.fun/` from
+  port `80`, and reverse proxies to Passport on `127.0.0.1:6867`.
+- Existing `*:443` service on the HK server remains reserved for Xray and was
+  not reused.
+- `/api/health` was verified externally over HTTPS with a valid certificate.
+- The real registered host `PC-WIN11` (`srv_gjx4oQjUBW00`) was visible in the
+  self-hosted Paseo workspace, and the relay WebSocket to
+  `wss://relay.paseo.sh/ws?...` exchanged frames from the HTTPS origin.
+- A direct daemon client probe to the same host returned hostname
+  `WO1FSEA-PC-WIN11`, daemon version `0.1.62`, and about `35ms` relay ping.
+
+Operational caveats:
+
+- Public plain HTTP is not a valid workspace entry point. The browser reports
+  `isSecureContext=false` and `crypto.subtle=false`, so the upstream Paseo relay
+  E2EE client cannot start. Use HTTPS or localhost.
+- Login and enrollment failures are rate-limited in memory at 5 failed attempts
+  per 60 seconds per `request.ip`; success clears the bucket and service restart
+  clears all buckets.
+- Behind Caddy, Fastify proxy trust is not yet configured. Until that follow-up
+  lands, rate-limit and history source-IP values may collapse to the reverse
+  proxy address instead of the raw client IP.
 
 The fixture offer above is synthetic. It contains no real daemon credential and
 must not be used as a real machine pairing secret.

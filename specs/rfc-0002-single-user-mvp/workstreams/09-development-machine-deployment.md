@@ -3,8 +3,8 @@ id: 09-development-machine-deployment
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated_by_rfc_0003_hk_deployment
+owner: Codex
 branch:
 pr:
 files:
@@ -90,3 +90,7 @@ Owner to unblock: Not applicable.
   scope only.
 - 2026-05-04: clarified that live development-machine validation is
   operator-gated and should not run in the first automated Dispatch Engine pass.
+- 2026-05-04: operator approved HK development deployment during rfc-0003. The
+  validated shape is documented in `docs/deployment-development-machine.md`:
+  Passport on `127.0.0.1:6867`, Caddy HTTPS on public `6868`, HTTP redirect on
+  `80`, and existing `443` reserved for Xray.

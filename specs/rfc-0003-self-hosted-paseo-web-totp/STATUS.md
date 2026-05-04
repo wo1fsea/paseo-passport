@@ -6,6 +6,7 @@ doc_type: spec
 status: active
 implementation: complete
 validation: complete
+deployment: hk_https_smoke_passed
 coordinator: Codex
 updated: 2026-05-04
 ---
@@ -86,13 +87,33 @@ now green.
   `specs/rfc-0003-self-hosted-paseo-web-totp/issues/dispatch-engine-blocked-run-after-protocol-violations.md`;
   the first `gh` attempt failed only because `/opt/homebrew/bin` was absent
   from Codex's shell `PATH`.
+- 2026-05-04: HK development deployment verified at
+  `https://paseo.codexy.fun:6868`. Passport listens on `127.0.0.1:6867`, Caddy
+  terminates HTTPS on public `6868`, public `80` redirects to HTTPS, and
+  existing `443` remains reserved for Xray.
+- 2026-05-04: Real `PC-WIN11` registration verified in the self-hosted
+  workspace from the HTTPS origin. The host appeared in the project picker, the
+  relay WebSocket to `relay.paseo.sh` exchanged frames, and a direct daemon
+  probe returned hostname `WO1FSEA-PC-WIN11`, daemon version `0.1.62`, and
+  about `35ms` ping.
+- 2026-05-04: Documented the public HTTP failure mode: non-local HTTP origins
+  are not browser secure contexts, so `crypto.subtle` is unavailable and the
+  upstream Paseo relay E2EE client does not start. Public deployments must use
+  HTTPS.
+- 2026-05-04: Documented the current auth throttling behavior: login and
+  enrollment completion failures are limited to 5 attempts per 60 seconds per
+  `request.ip`, in memory, with generic failure responses. Trusted proxy
+  handling behind Caddy remains a follow-up before raw client IP history and
+  IP-based buckets are authoritative.
 
 ## Spec Handoff
 
 - Spec path: `specs/rfc-0003-self-hosted-paseo-web-totp/`
 - Status: active; implementation complete with full local validation.
 - Spec type: feature / architecture correction
-- Open questions: none blocking the MVP.
+- Open questions: none blocking the MVP. Follow-ups are trusted proxy/raw-IP
+  correctness behind Caddy, DB/secret backup policy, and cleaner Windows daemon
+  service startup.
 - Workstreams: 7
 - Next owner: coordinator can review workstream evidence and the Dispatch
   Engine issue draft for the remaining DE run-state blocker.

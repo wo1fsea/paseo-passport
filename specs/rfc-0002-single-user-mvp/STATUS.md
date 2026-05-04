@@ -19,6 +19,11 @@ now includes the Passport server skeleton, auth/session flow, machine registry,
 host profile API, protected admin UI, generated Paseo workspace shell, protected
 workspace serving, and local smoke coverage.
 
+This spec is historical phase-A evidence. The current product target is
+`specs/rfc-0003-self-hosted-paseo-web-totp/`, which replaces username/password
+auth with pure TOTP and replaces the generated shell with a self-hosted upstream
+Paseo web build.
+
 Workstreams 09 and 10 remain operator-gated after local smoke because they
 require deployment-target selection and real-machine credentials outside the
 public repo. Workstream 11 records the follow-up decision for loopback-only
@@ -62,6 +67,9 @@ local auth bypass and local upstream Paseo pairing validation.
 - 2026-05-04: Target UX corrected in
   `specs/rfc-0003-self-hosted-paseo-web-totp/`: phase-A shell remains validated
   evidence but is not the final workspace target.
+- 2026-05-04: rfc-0003 completed and superseded the phase-A password-plus-TOTP
+  shell target. HK HTTPS deployment and real `PC-WIN11` smoke evidence now live
+  in rfc-0003 status and docs.
 
 ## Spec Handoff
 

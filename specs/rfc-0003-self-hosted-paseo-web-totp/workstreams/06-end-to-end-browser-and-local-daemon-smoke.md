@@ -59,6 +59,9 @@ daemon.
   shape with synthetic server IDs and fixture daemon public-key material.
 - Browser evidence used a local Passport server on `127.0.0.1:17317` because
   `127.0.0.1:7317` was already in use.
+- Follow-up coordinator validation used the HK HTTPS deployment and a real
+  `PC-WIN11` daemon registration, closing the real-daemon smoke gap for the
+  MVP.
 
 ## Validation Evidence
 
@@ -77,12 +80,22 @@ daemon.
   - `.out/screenshots/06-history-access-workspace.png`
 - Sanitized browser/API setup summary:
   `.out/logs/06-browser-setup-summary.json`.
+- HK HTTPS real-daemon smoke:
+  - `https://paseo.codexy.fun:6868/api/health` returned healthy over a valid
+    certificate.
+  - Browser secure-context checks passed from the HTTPS origin.
+  - Registered host `PC-WIN11` / `srv_gjx4oQjUBW00` appeared in the self-hosted
+    Paseo workspace.
+  - Relay WebSocket traffic to `relay.paseo.sh` was observed from the HTTPS
+    origin.
+  - Direct daemon probe returned `WO1FSEA-PC-WIN11`, daemon `0.1.62`, and about
+    `35ms` ping.
 
 ## Concerns
 
-- Workstream 06 did not exercise a real local daemon because none was available
-  in the worker environment; it used the documented synthetic fixture
-  equivalent.
+- The worker environment did not exercise a real local daemon, but the
+  coordinator subsequently verified a real registered daemon through the HK
+  HTTPS deployment.
 - The Browser plugin Node REPL surface was unavailable and the exposed
   Playwright MCP browser context was closed, so browser evidence used local
   `npx playwright screenshot` commands instead.

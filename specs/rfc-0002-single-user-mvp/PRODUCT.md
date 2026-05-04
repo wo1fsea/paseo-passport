@@ -6,6 +6,12 @@ doc_type: spec
 
 # Single-User MVP Product Spec
 
+Supersession note: this is the phase-A product spec. It is retained as
+historical evidence for the original password-plus-TOTP shell implementation.
+The current accepted MVP target is
+`../rfc-0003-self-hosted-paseo-web-totp/`, which uses pure TOTP authentication
+and serves the real upstream Paseo web UI.
+
 ## Summary
 
 Paseo Passport MVP is a single-user, self-hosted workspace that protects access

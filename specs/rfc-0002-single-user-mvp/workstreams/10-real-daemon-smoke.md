@@ -3,8 +3,8 @@ id: 10-real-daemon-smoke
 language: en-US
 audience: agent
 doc_type: spec
-status: ready
-owner: unassigned
+status: validated_by_rfc_0003_hk_smoke
+owner: Codex
 branch:
 pr:
 files:
@@ -69,3 +69,7 @@ Owner to unblock: Not applicable.
 ## Activity Log
 
 - 2026-05-04: workstream defined.
+- 2026-05-04: real daemon smoke completed during rfc-0003 against registered
+  `PC-WIN11` / `srv_gjx4oQjUBW00` through `https://paseo.codexy.fun:6868`.
+  The self-hosted workspace loaded the host from Passport and opened relay
+  WebSocket traffic from the HTTPS origin.

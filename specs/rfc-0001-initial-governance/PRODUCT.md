@@ -12,6 +12,10 @@ Initialize Paseo Passport with repo-local governance so future human and agent
 work has a stable entry point, documented decision gates, and a spec-first
 delivery path before application code is added.
 
+Historical note: this bootstrap spec described the repository before
+application code landed. The current implementation status is tracked by
+`../rfc-0003-self-hosted-paseo-web-totp/` and the root `README.md`.
+
 ## Goals / Non-goals
 
 - Goals:
@@ -36,8 +40,9 @@ delivery path before application code is added.
    the canonical governance entry point.
 4. Specs live under `specs/<spec-id>/` with separate product, technical, status,
    and workstream files.
-5. The README states that the repository is pre-implementation and exposes the
-   current governance audit command.
+5. At bootstrap time, the README stated that the repository was
+   pre-implementation and exposed the current governance audit command. Later
+   feature specs own application status updates.
 
 ## Open Questions
 

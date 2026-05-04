@@ -132,6 +132,9 @@ Non-goals:
   back silently to the phase-A shell.
 - Upstream web patch load failure: the app must not expose secrets; failure is
   visible enough for local debugging.
+- Public HTTP origin: the workspace must not rely on public plain HTTP because
+  upstream Paseo relay encryption requires browser WebCrypto, which is only
+  available in secure contexts such as HTTPS or localhost.
 - Local test bypass: only allowed on loopback/local-only binds and must still
   record bypass access events as local-test events.
 - History retention: after the 3,000-event limit is exceeded for either history
@@ -151,3 +154,7 @@ Non-goals:
 - Host-open and project-open workspace history events are deferred until after
   the MVP.
 - Whether history export is needed is deferred until after the MVP.
+- The verified public MVP entry point is `https://paseo.codexy.fun:6868`, with
+  Caddy reverse proxying to Passport on `127.0.0.1:6867`.
+- Trusted reverse-proxy handling for authoritative raw client IPs is a
+  follow-up, not a blocker for the single-user MVP.

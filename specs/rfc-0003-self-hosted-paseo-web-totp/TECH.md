@@ -83,6 +83,23 @@ inject a deterministic test key.
 `PASSPORT_LOCAL_AUTH_BYPASS=true` remains allowed only for local test runs bound
 to `127.0.0.1`, `localhost`, or `::1`.
 
+Verified production-like HK deployment values from 2026-05-04:
+
+```text
+PASSPORT_HOST=127.0.0.1
+PASSPORT_PORT=6867
+PASSPORT_COOKIE_SECURE=true
+PASSPORT_DB_PATH=/home/ubuntu/Projects/paseo-passport/data/passport.sqlite
+PASSPORT_STATIC_DIR=/home/ubuntu/Projects/paseo-passport/apps/passport-server/public
+PASSPORT_LOCAL_AUTH_BYPASS=false
+```
+
+That deployment is exposed by Caddy at `https://paseo.codexy.fun:6868`. Caddy
+listens on `*:80` for HTTP redirect / certificate issuance and on `*:6868` for
+HTTPS reverse proxy to Passport. Existing `*:443` remains reserved for Xray.
+Public HTTP origins are not accepted for workspace use because upstream Paseo
+relay encryption requires browser WebCrypto and therefore a secure context.
+
 ## Data Model
 
 Add or migrate these durable records:
@@ -199,6 +216,12 @@ Content-Type: application/json
 
 No username or password fields are accepted. On success, create a session
 cookie.
+
+Login and enrollment completion failures are rate-limited. The implemented MVP
+default is 5 failed attempts per 60 seconds per `request.ip`. The response stays
+generic to avoid disclosing whether the request was syntactically valid,
+rate-limited, or an incorrect TOTP. Successful authentication clears the bucket;
+service restart clears the in-memory buckets.
 
 ### Reset Enrollment
 
@@ -381,6 +404,9 @@ Confirmed host registry patch point:
 - Pairing offers remain machine-control credentials.
 - Development bypass is loopback-only and records local-test access events.
 - Public deployments require HTTPS and secure cookies.
+- Behind a reverse proxy, trusted-proxy handling must be configured before raw
+  source IP history or IP-based rate limiting can be treated as authoritative.
+  This is a known MVP follow-up for the Caddy deployment.
 
 ## Validation Plan
 
@@ -412,6 +438,9 @@ Additional required checks:
 - Browser smoke confirms registered Passport hosts are available in that UI.
 - Local daemon smoke confirms at least one registered local Paseo daemon can be
   selected or opened in the self-hosted UI.
+- Production-like browser smoke confirms the public HTTPS deployment is a
+  secure context, the registered `PC-WIN11` host appears in the self-hosted UI,
+  and the relay WebSocket is opened from the HTTPS origin.
 
 ## Risks And Follow-ups
 
@@ -423,3 +452,7 @@ Additional required checks:
   recovery, but this MVP remains single-user TOTP only.
 - Styling should track upstream Paseo enough for consistency, but avoid copying
   large unrelated UI systems unless needed to serve the real web app.
+- Fastify trusted-proxy configuration remains a follow-up before audited raw IP
+  history and IP-based rate limiting are fully correct behind Caddy.
+- Windows daemon background startup still needs a cleaner service wrapper path
+  for hosts where `paseo daemon start` leaves a visible Node console.
