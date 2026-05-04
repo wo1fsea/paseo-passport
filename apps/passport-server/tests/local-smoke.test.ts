@@ -38,12 +38,18 @@ async function startEnrollment(): Promise<string> {
     method: "POST",
     url: "/api/auth/enrollment/start"
   });
-  const body = start.json<{ manualSecret: string; otpauthUrl: string; qrPayload: string }>();
+  const body = start.json<{
+    manualSecret: string;
+    otpauthUrl: string;
+    qrImageDataUrl: string;
+    qrPayload: string;
+  }>();
 
   expect(start.statusCode).toBe(200);
   expect(body.manualSecret).toMatch(/^[A-Z2-7]+$/);
   expect(body.otpauthUrl).toContain("otpauth://totp/");
   expect(body.qrPayload).toBe(body.otpauthUrl);
+  expect(body.qrImageDataUrl).toMatch(/^data:image\/png;base64,/);
 
   return body.manualSecret;
 }

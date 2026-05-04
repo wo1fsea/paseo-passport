@@ -172,6 +172,7 @@ describe("auth routes", () => {
     });
     const body = start.json() as {
       otpauthUrl: string;
+      qrImageDataUrl: string;
       qrPayload: string;
       manualSecret: string;
     };
@@ -186,6 +187,7 @@ describe("auth routes", () => {
     expect(body.otpauthUrl).toContain("otpauth://totp/");
     expect(body.otpauthUrl).toContain(encodeURIComponent(OPERATOR_NAME));
     expect(body.qrPayload).toBe(body.otpauthUrl);
+    expect(body.qrImageDataUrl).toMatch(/^data:image\/png;base64,/);
   });
 
   it("completes enrollment only with a valid TOTP and stores the secret encrypted", async () => {

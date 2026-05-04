@@ -86,9 +86,10 @@ describe("admin UI", () => {
     expect(response.body).toContain("/api/auth/enrollment/complete");
     expect(response.body).toContain("/api/auth/login");
     expect(response.body).toContain("manualSecret");
-    expect(response.body).toContain("renderQrMatrix(data.qrPayload)");
-    expect(response.body).toContain("reedSolomonRemainder");
-    expect(response.body).toContain("QR_DATA_CODEWORDS");
+    expect(response.body).toContain("data.qrImageDataUrl");
+    expect(response.body).not.toContain("renderQrMatrix");
+    expect(response.body).not.toContain("reedSolomonRemainder");
+    expect(response.body).not.toContain("QR_DATA_CODEWORDS");
     expect(response.body).toContain("--surface0: #181B1A");
     expect(response.body).toContain("--foreground: #fafafa");
     expect(response.body).toContain("--foreground-muted: #A1A5A4");

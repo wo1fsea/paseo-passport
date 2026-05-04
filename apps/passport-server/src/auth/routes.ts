@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import QRCode from "qrcode";
 import type { AccessEventRecord, PassportDatabase, WorkspaceEventRecord } from "../db";
 import { createAuthMiddleware, readCookie } from "./middleware";
 import {
@@ -100,8 +101,15 @@ export async function registerAuthRoutes(
       username: options.operatorName
     });
 
+    const qrImageDataUrl = await QRCode.toDataURL(otpauthUrl, {
+      errorCorrectionLevel: "M",
+      margin: 4,
+      scale: 8
+    });
+
     reply.send({
       otpauthUrl,
+      qrImageDataUrl,
       qrPayload: otpauthUrl,
       manualSecret: pendingEnrollmentSecret
     });
