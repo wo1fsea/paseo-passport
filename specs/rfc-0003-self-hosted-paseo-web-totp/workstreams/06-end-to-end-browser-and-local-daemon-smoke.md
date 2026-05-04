@@ -4,10 +4,10 @@ workstream: 06
 language: en-US
 audience: agent
 doc_type: workstream
-status: draft
-owner: unassigned
+status: validated
+owner: worker-06-e2e-smoke
 depends_on:
-  - 02
+  - 02R
   - 03
   - 05
 updated: 2026-05-04
@@ -44,3 +44,58 @@ daemon.
 - User can open the Passport URL, authenticate with TOTP, reach the real Paseo
   interactive UI, and see registered machines.
 - Access history and workspace history both show useful recent entries.
+
+## Implementation Notes
+
+- Updated `apps/passport-server/tests/local-smoke.test.ts` from the phase-A
+  password-plus-TOTP shell smoke to the current MVP TOTP-only flow.
+- The smoke now covers first-run enrollment, post-enrollment TOTP-only login,
+  rejection of username/password login payloads, synthetic fixture host import,
+  sanitized `/api/passport/hosts`, upstream Paseo web shell loading,
+  credentialed Passport host fetch in the upstream bundle, and access/workspace
+  history evidence.
+- A real local Paseo daemon registration was not available in this worker
+  environment. The local fixture equivalent used the current v2 relay offer
+  shape with synthetic server IDs and fixture daemon public-key material.
+- Browser evidence used a local Passport server on `127.0.0.1:17317` because
+  `127.0.0.1:7317` was already in use.
+
+## Validation Evidence
+
+- `npm run build`: passed.
+- `npm run build:paseo-web`: passed; rebuilt upstream Paseo `v0.1.67` into
+  `apps/passport-server/public`.
+- `npm run test:e2e`: passed after the smoke update; 1 test passed.
+- `npm test -- --run local-auth-bypass offer`: passed after targeted stale-test
+  repair; 9 tests passed.
+- `npm test -- --run`: passed after targeted stale-test repair; 47 tests passed
+  across 9 files.
+- Browser screenshots:
+  - `.out/screenshots/06-login-totp-only.png`
+  - `.out/screenshots/06-machines-fixture-host.png`
+  - `.out/screenshots/06-self-hosted-paseo-ui.png`
+  - `.out/screenshots/06-history-access-workspace.png`
+- Sanitized browser/API setup summary:
+  `.out/logs/06-browser-setup-summary.json`.
+
+## Concerns
+
+- Workstream 06 did not exercise a real local daemon because none was available
+  in the worker environment; it used the documented synthetic fixture
+  equivalent.
+- The Browser plugin Node REPL surface was unavailable and the exposed
+  Playwright MCP browser context was closed, so browser evidence used local
+  `npx playwright screenshot` commands instead.
+- Dispatch Engine run `20260504T055050436139Z` could not recover after
+  validation repair because worker-06 recorded protocol/capability overreach
+  alerts. The run was cancelled with evidence preserved, and this is tracked as
+  a Dispatch Engine framework issue draft under this spec's `issues/`
+  directory.
+
+## Activity Log
+
+- 2026-05-04: Claimed and validated workstream 06 with updated local smoke test,
+  required build/e2e ladder, fixture-host browser evidence, and documented
+  full-suite concerns.
+- 2026-05-04: Repaired stale full-suite tests outside the original worker-06
+  scope and confirmed `npm test -- --run` passes 47/47 tests.

@@ -27,15 +27,6 @@ export async function registerWorkspaceStaticRoutes(
     reply.type("text/html").send(readStaticFile(options.config.staticDir, "index.html"));
   });
 
-  server.get("/passport-hosts.js", async (request, reply) => {
-    if (!isAuthenticated(request, options, now())) {
-      reply.code(401).send({ error: "authentication_failed" });
-      return;
-    }
-
-    reply.type("application/javascript").send(readStaticFile(options.config.staticDir, "passport-hosts.js"));
-  });
-
   server.get("/*", async (request, reply) => {
     if (isApiPath(request.url)) {
       reply.code(404).send({ error: "not_found" });
@@ -49,6 +40,10 @@ export async function registerWorkspaceStaticRoutes(
 
     const staticPath = getStaticRequestPath(request.url);
     const fileName = findStaticFile(options.config.staticDir, staticPath);
+    if (!fileName) {
+      reply.code(404).send({ error: "not_found" });
+      return;
+    }
 
     reply.type(contentTypeFor(fileName)).send(readStaticFile(options.config.staticDir, fileName));
   });
@@ -73,7 +68,7 @@ function isAuthenticated(
   return Boolean(session);
 }
 
-function readStaticFile(staticDir: string, fileName: string): string {
+function readStaticFile(staticDir: string, fileName: string): Buffer {
   const filePath = path.resolve(staticDir, fileName);
   const root = path.resolve(staticDir);
 
@@ -81,7 +76,7 @@ function readStaticFile(staticDir: string, fileName: string): string {
     throw new Error("Invalid static file path.");
   }
 
-  return fs.readFileSync(filePath, "utf8");
+  return fs.readFileSync(filePath);
 }
 
 function isApiPath(url: string): boolean {
@@ -94,9 +89,13 @@ function getStaticRequestPath(url: string): string {
   return decodeURIComponent(pathname).replace(/^\/+/, "");
 }
 
-function findStaticFile(staticDir: string, requestPath: string): string {
+function findStaticFile(staticDir: string, requestPath: string): string | undefined {
   if (requestPath && isReadableStaticFile(staticDir, requestPath)) {
     return requestPath;
+  }
+
+  if (path.extname(requestPath)) {
+    return undefined;
   }
 
   return "index.html";
@@ -119,10 +118,14 @@ function contentTypeFor(fileName: string): string {
       return "text/css";
     case ".html":
       return "text/html";
+    case ".ico":
+      return "image/x-icon";
     case ".js":
       return "application/javascript";
     case ".json":
       return "application/json";
+    case ".png":
+      return "image/png";
     case ".svg":
       return "image/svg+xml";
     default:

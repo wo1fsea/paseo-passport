@@ -3,9 +3,9 @@ spec_id: rfc-0003-self-hosted-paseo-web-totp
 language: en-US
 audience: agent
 doc_type: spec
-status: draft
-implementation: not_started
-validation: not_started
+status: active
+implementation: complete
+validation: complete
 coordinator: Codex
 updated: 2026-05-04
 ---
@@ -14,24 +14,27 @@ updated: 2026-05-04
 
 ## Summary
 
-This draft spec corrects the target product direction after phase-A validation:
+This spec corrects the target product direction after phase-A validation:
 Passport should serve the real self-hosted Paseo interactive web UI behind
 single-user pure TOTP authentication. The current phase-A shell remains useful
 evidence for the host registry contract, but it is not the final workspace.
 
-The spec is draft because the upstream Paseo host-runtime patch point must be
-re-confirmed before implementation starts.
+Implementation evidence exists for all MVP workstreams, and workstream 06 has
+final smoke evidence. The stale full-suite tests called out by the final smoke
+worker were repaired on 2026-05-04, and the full Passport server test suite is
+now green.
 
 ## Workstreams
 
 | ID | Scope | Status | Owner | Branch / PR | Depends on | Updated |
 |---|---|---|---|---|---|---|
-| 01 | TOTP-only enrollment and session auth | draft | unassigned | | | 2026-05-04 |
-| 02 | Paseo-styled Passport pages | draft | unassigned | | 01 | 2026-05-04 |
-| 03 | Access and workspace history | draft | unassigned | | 01 | 2026-05-04 |
-| 04 | Self-hosted upstream Paseo web build | draft | unassigned | | 01 | 2026-05-04 |
-| 05 | Host registry patch for upstream web | draft | unassigned | | 04 | 2026-05-04 |
-| 06 | End-to-end browser and local daemon smoke | draft | unassigned | | 02, 03, 05 | 2026-05-04 |
+| 01 | TOTP-only enrollment and session auth | implemented_with_concerns | worker-01-totp-auth | | | 2026-05-04 |
+| 02 | Paseo-styled Passport pages | implemented_with_repair | worker-02-paseo-pages / worker-02r-paseo-visual-alignment | | 01 | 2026-05-04 |
+| 02R | Paseo visual alignment repair | implemented_with_concerns | worker-02r-paseo-visual-alignment | | 02, 03 | 2026-05-04 |
+| 03 | Access and workspace history | implemented | worker-03-history | | 01 | 2026-05-04 |
+| 04 | Self-hosted upstream Paseo web build | implemented | worker-04-upstream-build | | 01 | 2026-05-04 |
+| 05 | Host registry patch for upstream web | implemented_with_concerns | worker-05-host-registry-patch | | 04 | 2026-05-04 |
+| 06 | End-to-end browser and local daemon smoke | validated | worker-06-e2e-smoke + Codex repair | | 02R, 03, 05 | 2026-05-04 |
 
 ## Activity Log
 
@@ -55,19 +58,46 @@ re-confirmed before implementation starts.
   dependencies, and verified the upstream app build command:
   `npm run build --workspace=@getpaseo/app`, producing
   `vendor/paseo/packages/app/dist`.
+- 2026-05-04: Accepted upstream host registry patch point:
+  `packages/app/src/runtime/host-runtime.ts`, directly after
+  `HostRuntimeStore.runBoot()` calls `loadFromStorage()`, with host
+  normalization through `packages/app/src/types/host-connection.ts`.
+- 2026-05-04: Visual review rejected the first Passport page styling as a
+  separate green/amber dark security-admin console rather than an upstream
+  Paseo-aligned shell. Added and implemented workstream 02R before final smoke.
+- 2026-05-04: Workstream 06 validated the TOTP-only MVP smoke, upstream Paseo
+  serving, fixture host availability, sanitized host API, and access/workspace
+  history with browser screenshots. The initial full-suite run was blocked by
+  stale non-assigned tests that still targeted the phase-A login/shell.
+- 2026-05-04: Repaired the stale full-suite tests:
+  `apps/passport-server/tests/local-auth-bypass.test.ts` now asserts the
+  current Paseo-aligned machines page, and
+  `apps/passport-server/tests/offer.test.ts` now authenticates through
+  first-run TOTP enrollment plus TOTP-only login instead of the removed
+  password helper.
+- 2026-05-04: Final validation passed:
+  `npm test -- --run local-auth-bypass offer` passed 9/9 tests, and
+  `npm test -- --run` passed 47/47 tests across 9 files.
+- 2026-05-04: Dispatch Engine run `20260504T055050436139Z` could not recover
+  from framework protocol-violation alerts after validation was repaired, so it
+  was cancelled with evidence preserved. Upstream Dispatch Engine issue
+  https://github.com/wo1fsea/dispatch-engine/issues/19 was filed, with the
+  local issue record at
+  `specs/rfc-0003-self-hosted-paseo-web-totp/issues/dispatch-engine-blocked-run-after-protocol-violations.md`;
+  the first `gh` attempt failed only because `/opt/homebrew/bin` was absent
+  from Codex's shell `PATH`.
 
 ## Spec Handoff
 
 - Spec path: `specs/rfc-0003-self-hosted-paseo-web-totp/`
-- Status: draft
+- Status: active; implementation complete with full local validation.
 - Spec type: feature / architecture correction
-- Open questions: upstream Paseo host-runtime patch point must be confirmed.
-- Workstreams: 6
-- Next owner: coordinator should inspect pinned upstream Paseo web source before
-  marking workstreams 04-06 ready.
+- Open questions: none blocking the MVP.
+- Workstreams: 7
+- Next owner: coordinator can review workstream evidence and the Dispatch
+  Engine issue draft for the remaining DE run-state blocker.
 - Validation expectation: TDD for auth/history, build and unit/API tests,
   upstream web build validation, and in-app browser smoke against real
   self-hosted Paseo UI.
-- Ready to implement: no. After user review, workstreams 01-03 can move to
-  ready; 04-06 need upstream code confirmation first.
+- Ready to review: yes.
 - Subagent handoff required: yes for implementation workstreams.

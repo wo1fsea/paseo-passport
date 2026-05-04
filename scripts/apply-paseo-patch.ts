@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 const repoRoot = path.resolve(__dirname, "..");
 const vendorRoot = path.join(repoRoot, "vendor", "paseo");
 const patchPath = path.join(repoRoot, "patches", "paseo-web-passport-hosts.patch");
-const expectedBaseline = "4338f5b46ca3f562c907fb5c4d8df31d7b485a72";
+const expectedBaseline = "15a2e3bdcbefda97587f74e499d6b81a278d458c";
 
 if (!fs.existsSync(patchPath)) {
   throw new Error(`Missing patch file: ${patchPath}`);
@@ -34,16 +34,30 @@ if (actualBaseline !== expectedBaseline) {
 
 const result = spawnSync("git", ["apply", "--check", patchPath], {
   cwd: vendorRoot,
-  stdio: "inherit"
+  stdio: "ignore"
 });
 
-if (result.status !== 0) {
-  process.exit(result.status ?? 1);
+if (result.status === 0) {
+  const apply = spawnSync("git", ["apply", patchPath], {
+    cwd: vendorRoot,
+    stdio: "inherit"
+  });
+
+  process.exit(apply.status ?? 1);
 }
 
-const apply = spawnSync("git", ["apply", patchPath], {
+const reverseCheck = spawnSync("git", ["apply", "--reverse", "--check", patchPath], {
+  cwd: vendorRoot,
+  stdio: "ignore"
+});
+
+if (reverseCheck.status === 0) {
+  console.log("Paseo Passport patch is already applied.");
+  process.exit(0);
+}
+
+spawnSync("git", ["apply", "--check", patchPath], {
   cwd: vendorRoot,
   stdio: "inherit"
 });
-
-process.exit(apply.status ?? 1);
+process.exit(result.status ?? 1);

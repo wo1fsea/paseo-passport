@@ -12,6 +12,7 @@
     "build": "npm --workspace @paseo-passport/passport-server run build",
     "build:paseo-web": "tsx scripts/build-paseo-web.ts",
     "dev": "npm --workspace @paseo-passport/passport-server run dev",
+    "passport:reset-totp": "tsx scripts/init-auth.ts reset-totp",
     "test": "npm --workspace @paseo-passport/passport-server run test --",
     "test:e2e": "npm --workspace @paseo-passport/passport-server run test -- --run local-smoke"
   },

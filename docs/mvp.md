@@ -7,68 +7,85 @@ updated: 2026-05-04
 
 # Paseo Passport MVP
 
-This local first-phase MVP proves the single-user loop without real machine
-credentials:
+This MVP proves the single-user self-hosted Paseo loop with Passport-managed
+TOTP enrollment and a Passport-registered host fixture.
 
-1. Generate local auth secrets:
+1. Configure local secrets outside git:
 
    ```sh
-   npx tsx scripts/init-auth.ts --username admin
+   PASSPORT_SESSION_SECRET=<at least 32 random characters>
+   PASSPORT_DATA_KEY=<at least 32 random characters>
+   PASSPORT_DB_PATH=./data/passport.sqlite
+   PASSPORT_STATIC_DIR=./apps/passport-server/public
+   PASSPORT_HOST=127.0.0.1
+   PASSPORT_PORT=7317
+   PASSPORT_COOKIE_SECURE=false
    ```
 
-2. Put the generated `PASSPORT_*` values in a local `.env` file outside git.
-3. Build the workspace shell:
+2. Build the self-hosted upstream Paseo web app:
 
    ```sh
    npm run build:paseo-web
    ```
 
-4. Start Passport on the local loopback interface:
+3. Start Passport on the local loopback interface:
 
    ```sh
    npm run dev
    ```
 
-5. Open `http://127.0.0.1:7317/login`, log in, and import a fixture offer:
+4. Open `http://127.0.0.1:7317/login`.
+5. On first run, scan the QR code or enter the displayed manual secret in a
+   TOTP app, then submit the current TOTP code.
+6. Import a local machine offer from the Passport machines page. The current
+   automated smoke uses this synthetic fixture offer instead of a real daemon:
 
    ```text
    https://app.paseo.sh/#offer=eyJ2IjoyLCJzZXJ2ZXJJZCI6InNydl9zbW9rZSIsImRhZW1vblB1YmxpY0tleUI2NCI6ImZpeHR1cmUtZGFlbW9uLXB1YmxpYy1rZXkiLCJyZWxheSI6eyJlbmRwb2ludCI6InJlbGF5LnBhc2VvLnNoOjQ0MyJ9fQ
    ```
 
-6. Confirm `/api/passport/hosts` returns the fixture host after login.
-7. Confirm `/` loads the Passport workspace shell and lists imported hosts.
+7. Confirm `/api/passport/hosts` returns registered `HostProfile[]` data after
+   login and does not include raw offers, TOTP secrets, or session tokens.
+8. Confirm `/` loads the self-hosted upstream Paseo UI through Passport.
+9. Confirm `/admin/history` shows access and workspace events.
 
 Automated local smoke:
 
 ```sh
+npm run build
 npm run build:paseo-web
 npm run test:e2e
-npm run build
-npm test -- --run
 ```
 
-`npm run test:e2e` runs `apps/passport-server/tests/local-smoke.test.ts`.
-The smoke uses synthetic credentials and an in-memory database to prove login,
-fixture import, the admin registry API, `/api/passport/hosts`, authenticated
-workspace shell loading, and authenticated loading of `/passport-hosts.js`.
-The host-loader asset is checked for the credentialed `/api/passport/hosts`
-fetch path used to render Passport hosts in the workspace.
+`npm run test:e2e` runs `apps/passport-server/tests/local-smoke.test.ts`. The
+smoke uses an in-memory database and synthetic fixture data to prove first-run
+TOTP enrollment, later TOTP-only login, rejection of username/password login
+payloads, fixture import, `/api/passport/hosts` sanitization, authenticated
+upstream Paseo web serving, credentialed host loading in the upstream bundle,
+and access/workspace history records.
 
 Validation evidence from 2026-05-04:
 
-- `npm run build:paseo-web`: passed; rebuilt `apps/passport-server/public`.
-- `npm run test:e2e`: passed; 1 local smoke test passed.
-- `npm run build`: passed; TypeScript build completed.
-- `npm test -- --run`: passed; 7 test files and 26 tests passed.
+- `npm run build`: passed.
+- `npm run build:paseo-web`: passed; rebuilt upstream Paseo `v0.1.67` into
+  `apps/passport-server/public`.
+- `npm run test:e2e`: passed; 1 local MVP smoke test passed.
+- `npm test -- --run local-auth-bypass offer`: passed after stale-test repair;
+  9 tests passed.
+- `npm test -- --run`: passed after stale-test repair; 47 tests passed across
+  9 files.
+- Browser evidence captured against `http://127.0.0.1:17317` because port
+  `7317` was already in use:
+  - `.out/screenshots/06-login-totp-only.png`
+  - `.out/screenshots/06-machines-fixture-host.png`
+  - `.out/screenshots/06-self-hosted-paseo-ui.png`
+  - `.out/screenshots/06-history-access-workspace.png`
+  - `.out/logs/06-browser-setup-summary.json`
 
-Manual/browser gap:
+Full-suite status:
 
-- A headless browser smoke was attempted against `http://127.0.0.1:7317/login`
-  with the same synthetic credentials. The Playwright browser opened the login
-  page, then the local browser backend closed before form interaction, so no
-  retained screenshot or full browser import/render evidence was produced.
-- Until a stable browser runner is added, use the manual steps above to confirm
-  the imported host appears in the workspace UI after login.
+- Green as of 2026-05-04. The stale tests outside the final smoke scope were
+  updated for the current TOTP-only auth and upstream-web MVP.
 
 The fixture offer above is synthetic. It contains no real daemon credential and
 must not be used as a real machine pairing secret.

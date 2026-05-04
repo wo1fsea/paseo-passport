@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/index";
-import { hashPassword } from "../src/auth/password";
 import { generateTotp } from "../src/auth/totp";
 import { parseRelayOffer } from "../src/machines/offer";
 
-const ADMIN_USER = "admin";
-const PASSWORD = "correct horse battery staple";
-const TOTP_SECRET = "JYGSUSLDHDAYZHD4D4JHVYXFWL3H5K7V";
+const OPERATOR_NAME = "operator";
+const DATA_KEY = "0123456789abcdef0123456789abcdef";
 const SESSION_SECRET = "test-session-secret-with-enough-entropy";
 
 let server: FastifyInstance | undefined;
@@ -32,39 +30,59 @@ function fixtureOffer(serverId = "srv_fixture"): string {
   })}`;
 }
 
-async function buildAuthenticatedServer(): Promise<{ cookie: string }> {
-  const passwordHash = await hashPassword(PASSWORD);
-  server = buildServer({
-    adminUser: ADMIN_USER,
-    cookieSecure: false,
-    dbPath: ":memory:",
-    host: "127.0.0.1",
-    nodeEnv: "test",
-    passwordHash,
-    port: 7317,
-    sessionSecret: SESSION_SECRET,
-    sessionTtlSeconds: 60,
-    staticDir: "./public",
-    totpSecret: TOTP_SECRET
-  });
-
-  const login = await server.inject({
-    method: "POST",
-    url: "/api/auth/login",
-    payload: {
-      username: ADMIN_USER,
-      password: PASSWORD,
-      totp: generateTotp(TOTP_SECRET)
-    }
-  });
-  const setCookie = login.headers["set-cookie"];
+function sessionCookie(response: { headers: Record<string, string | string[] | undefined> }): string {
+  const setCookie = response.headers["set-cookie"];
   const cookie = (Array.isArray(setCookie) ? setCookie[0] : setCookie)?.split(";")[0];
 
   if (!cookie) {
     throw new Error("Expected login cookie.");
   }
 
-  return { cookie };
+  return cookie;
+}
+
+async function buildAuthenticatedServer(): Promise<{ cookie: string }> {
+  server = buildServer({
+    cookieSecure: false,
+    dataKey: DATA_KEY,
+    dbPath: ":memory:",
+    host: "127.0.0.1",
+    localAuthBypass: false,
+    nodeEnv: "test",
+    operatorName: OPERATOR_NAME,
+    port: 7317,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlSeconds: 60,
+    staticDir: "./public"
+  });
+
+  const start = await server.inject({
+    method: "POST",
+    url: "/api/auth/enrollment/start"
+  });
+  const secret = (start.json() as { manualSecret: string }).manualSecret;
+  const complete = await server.inject({
+    method: "POST",
+    url: "/api/auth/enrollment/complete",
+    payload: {
+      totp: generateTotp(secret)
+    }
+  });
+
+  expect(start.statusCode).toBe(200);
+  expect(complete.statusCode).toBe(204);
+
+  const login = await server.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: {
+      totp: generateTotp(secret)
+    }
+  });
+
+  expect(login.statusCode).toBe(204);
+
+  return { cookie: sessionCookie(login) };
 }
 
 describe("relay offer parsing", () => {
@@ -106,19 +124,18 @@ describe("relay offer parsing", () => {
 
 describe("machine registry API", () => {
   it("requires auth for admin machine routes", async () => {
-    const passwordHash = await hashPassword(PASSWORD);
     server = buildServer({
-      adminUser: ADMIN_USER,
       cookieSecure: false,
+      dataKey: DATA_KEY,
       dbPath: ":memory:",
       host: "127.0.0.1",
+      localAuthBypass: false,
       nodeEnv: "test",
-      passwordHash,
+      operatorName: OPERATOR_NAME,
       port: 7317,
       sessionSecret: SESSION_SECRET,
       sessionTtlSeconds: 60,
-      staticDir: "./public",
-      totpSecret: TOTP_SECRET
+      staticDir: "./public"
     });
 
     const response = await server.inject({

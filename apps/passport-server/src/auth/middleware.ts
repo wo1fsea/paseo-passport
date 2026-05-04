@@ -3,7 +3,7 @@ import type { PassportDatabase } from "../db";
 import { authenticateSession, SESSION_COOKIE_NAME } from "./sessions";
 
 export interface AuthenticatedPassportUser {
-  username: string;
+  operator: string;
   sessionHash: string;
 }
 
@@ -14,9 +14,10 @@ declare module "fastify" {
 }
 
 export interface AuthMiddlewareOptions {
-  adminUser: string;
+  adminUser?: string;
   db: PassportDatabase;
   localAuthBypass?: boolean;
+  operatorName?: string;
   sessionSecret: string;
   now: () => Date;
 }
@@ -26,9 +27,11 @@ export function createAuthMiddleware(options: AuthMiddlewareOptions) {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
+    const operatorName = options.operatorName ?? options.adminUser ?? "operator";
+
     if (options.localAuthBypass) {
       request.passportUser = {
-        username: options.adminUser,
+        operator: operatorName,
         sessionHash: "local-auth-bypass"
       };
       return;
@@ -47,7 +50,7 @@ export function createAuthMiddleware(options: AuthMiddlewareOptions) {
     }
 
     request.passportUser = {
-      username: options.adminUser,
+      operator: operatorName,
       sessionHash: session.sessionHash
     };
   };

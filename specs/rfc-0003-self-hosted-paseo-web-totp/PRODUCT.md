@@ -143,8 +143,11 @@ Non-goals:
 - Upstream Paseo web build command is confirmed as
   `npm run build --workspace=@getpaseo/app` inside `vendor/paseo`, producing
   `vendor/paseo/packages/app/dist`.
-- Exact upstream host registry boot path and `HostProfile` normalization entry
-  point must be confirmed before patching the web app.
+- Upstream host registry patch point is confirmed as
+  `packages/app/src/runtime/host-runtime.ts`,
+  `HostRuntimeStore.runBoot()` immediately after `loadFromStorage()`, using
+  `normalizeStoredHostProfile()` from
+  `packages/app/src/types/host-connection.ts`.
 - Host-open and project-open workspace history events are deferred until after
   the MVP.
 - Whether history export is needed is deferred until after the MVP.

@@ -1,18 +1,18 @@
 export interface PassportConfig {
-  adminUser: string;
   nodeEnv: string;
   host: string;
   port: number;
   localAuthBypass: boolean;
   cookieSecure: boolean;
+  dataKey: string;
   dbPath: string;
-  passwordHash: string;
+  operatorName: string;
   sessionSecret: string;
   sessionTtlSeconds: number;
   staticDir: string;
-  totpSecret: string;
 }
 
+const DEFAULT_OPERATOR_NAME = "operator";
 const DEFAULT_PORT = 7317;
 const DEFAULT_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -71,25 +71,41 @@ function requiredSecret(name: string, value: string | undefined): string {
   return value;
 }
 
+function resolveDataKey(dbPath: string, value: string | undefined): string {
+  if (dbPath === ":memory:" && !value) {
+    return "";
+  }
+
+  if (!value) {
+    throw new Error("PASSPORT_DATA_KEY is required for persistent Passport data.");
+  }
+
+  if (value.length < 32) {
+    throw new Error("PASSPORT_DATA_KEY must be at least 32 characters.");
+  }
+
+  return value;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): PassportConfig {
   const nodeEnv = env.NODE_ENV || "development";
+  const dbPath = env.PASSPORT_DB_PATH || "./data/passport.sqlite";
 
   return {
-    adminUser: requiredSecret("PASSPORT_ADMIN_USER", env.PASSPORT_ADMIN_USER),
     nodeEnv,
     host: env.PASSPORT_HOST || "127.0.0.1",
     port: parsePort(env.PASSPORT_PORT),
     localAuthBypass: parseBoolean(env.PASSPORT_LOCAL_AUTH_BYPASS, false),
     cookieSecure: parseBoolean(env.PASSPORT_COOKIE_SECURE, false),
-    dbPath: env.PASSPORT_DB_PATH || "./data/passport.sqlite",
-    passwordHash: requiredSecret("PASSPORT_PASSWORD_HASH", env.PASSPORT_PASSWORD_HASH),
+    dataKey: resolveDataKey(dbPath, env.PASSPORT_DATA_KEY),
+    dbPath,
+    operatorName: DEFAULT_OPERATOR_NAME,
     sessionSecret: requiredSecret("PASSPORT_SESSION_SECRET", env.PASSPORT_SESSION_SECRET),
     sessionTtlSeconds: parsePositiveInteger(
       "PASSPORT_SESSION_TTL_SECONDS",
       env.PASSPORT_SESSION_TTL_SECONDS,
       DEFAULT_SESSION_TTL_SECONDS
     ),
-    staticDir: env.PASSPORT_STATIC_DIR || "./public",
-    totpSecret: requiredSecret("PASSPORT_TOTP_SECRET", env.PASSPORT_TOTP_SECRET)
+    staticDir: env.PASSPORT_STATIC_DIR || "./public"
   };
 }

@@ -4,8 +4,8 @@ workstream: 04
 language: en-US
 audience: agent
 doc_type: workstream
-status: draft
-owner: unassigned
+status: implemented
+owner: worker-04-upstream-build
 depends_on:
   - 01
 updated: 2026-05-04
@@ -34,14 +34,30 @@ build of upstream Paseo web.
 
 ## Validation
 
-- Upstream web build command passes locally and produces
-  `vendor/paseo/packages/app/dist/index.html`.
-- `.gitmodules` and the submodule gitlink point at the accepted upstream stable
-  release tag/commit.
-- Agent setup can initialize the submodule and verify `vendor/paseo` is at
-  `v0.1.67` / `15a2e3bdcbefda97587f74e499d6b81a278d458c`.
-- Passport serves the built upstream app from the protected workspace route.
-- Browser smoke shows real Paseo interactive UI, not the Passport shell.
+- Upstream web build command passed locally through `npm run build:paseo-web`
+  and produced `vendor/paseo/packages/app/dist/index.html`.
+- `.gitmodules` points `vendor/paseo` at `https://github.com/getpaseo/paseo.git`.
+- The submodule gitlink and local checkout are verified at `v0.1.67` /
+  `15a2e3bdcbefda97587f74e499d6b81a278d458c`.
+- Passport serves the copied upstream app from protected workspace routes.
+- Deep-link fallback is preserved for client routes, while missing generated
+  static assets return `404`.
+- The copied public output preserves the upstream license notice at
+  `apps/passport-server/public/upstream-paseo-LICENSE.txt`.
+
+## Implementation Evidence
+
+- `npm test -- --run workspace-serving` red phase failed before implementation:
+  `npm run build:paseo-web` still emitted the old Passport workspace shell and
+  missing generated JavaScript assets fell back to `index.html`.
+- `npm test -- --run workspace-serving` green phase passed after the upstream
+  build/copy script and static fallback changes.
+- Final validation passed: `npm run build:paseo-web`, `npm run build`,
+  `npm test -- --run workspace-serving`, `npm run passport:reset-totp --
+  --db :memory:`, and explicit submodule HEAD/tag checks.
+- Browser smoke against loopback local-auth-bypass served the upstream Paseo
+  welcome UI from Passport. Evidence:
+  `.out/screenshots/worker-04-upstream-paseo-root-15s.png`.
 
 ## Acceptance
 

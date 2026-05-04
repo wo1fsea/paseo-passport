@@ -25,23 +25,22 @@ export function buildServer(config: PassportConfig = loadConfig()): FastifyInsta
   });
 
   void registerAuthRoutes(server, {
-    adminUser: config.adminUser,
     cookieSecure: config.cookieSecure,
+    dataKey: config.dataKey,
     db,
     localAuthBypass: config.localAuthBypass,
-    passwordHash: config.passwordHash,
+    operatorName: config.operatorName,
     sessionSecret: config.sessionSecret,
-    sessionTtlSeconds: config.sessionTtlSeconds,
-    totpSecret: config.totpSecret
+    sessionTtlSeconds: config.sessionTtlSeconds
   });
   void registerMachineRoutes(server, {
-    adminUser: config.adminUser,
+    adminUser: config.operatorName,
     db,
     localAuthBypass: config.localAuthBypass,
     sessionSecret: config.sessionSecret
   });
   void registerAdminUiRoutes(server, {
-    adminUser: config.adminUser,
+    adminUser: config.operatorName,
     db,
     localAuthBypass: config.localAuthBypass,
     sessionSecret: config.sessionSecret

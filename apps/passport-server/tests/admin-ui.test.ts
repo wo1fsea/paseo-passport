@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/index";
-import { hashPassword } from "../src/auth/password";
 import { generateTotp } from "../src/auth/totp";
 
-const ADMIN_USER = "admin";
-const PASSWORD = "correct horse battery staple";
-const TOTP_SECRET = "JYGSUSLDHDAYZHD4D4JHVYXFWL3H5K7V";
+const OPERATOR_NAME = "operator";
+const DATA_KEY = "0123456789abcdef0123456789abcdef";
 const SESSION_SECRET = "test-session-secret-with-enough-entropy";
 
 let server: FastifyInstance | undefined;
@@ -18,28 +16,31 @@ afterEach(async () => {
 
 async function buildUiTestServer(): Promise<void> {
   server = buildServer({
-    adminUser: ADMIN_USER,
     cookieSecure: false,
+    dataKey: DATA_KEY,
     dbPath: ":memory:",
     host: "127.0.0.1",
+    localAuthBypass: false,
     nodeEnv: "test",
-    passwordHash: await hashPassword(PASSWORD),
+    operatorName: OPERATOR_NAME,
     port: 7317,
     sessionSecret: SESSION_SECRET,
     sessionTtlSeconds: 60,
-    staticDir: "./public",
-    totpSecret: TOTP_SECRET
+    staticDir: "./public"
   });
 }
 
 async function loginCookie(): Promise<string> {
+  const start = await server!.inject({
+    method: "POST",
+    url: "/api/auth/enrollment/start"
+  });
+  const secret = start.json<{ manualSecret: string }>().manualSecret;
   const login = await server!.inject({
     method: "POST",
-    url: "/api/auth/login",
+    url: "/api/auth/enrollment/complete",
     payload: {
-      username: ADMIN_USER,
-      password: PASSWORD,
-      totp: generateTotp(TOTP_SECRET)
+      totp: generateTotp(secret)
     }
   });
   const setCookie = login.headers["set-cookie"];
@@ -79,6 +80,34 @@ describe("admin UI", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toContain("text/html");
     expect(response.body).toContain("Paseo Passport");
+    expect(response.body).toContain('data-surface="passport-auth"');
+    expect(response.body).toContain("/api/auth/state");
+    expect(response.body).toContain("/api/auth/enrollment/start");
+    expect(response.body).toContain("/api/auth/enrollment/complete");
+    expect(response.body).toContain("/api/auth/login");
+    expect(response.body).toContain("manualSecret");
+    expect(response.body).toContain("renderQrMatrix(data.qrPayload)");
+    expect(response.body).toContain("reedSolomonRemainder");
+    expect(response.body).toContain("QR_DATA_CODEWORDS");
+    expect(response.body).toContain("--surface0: #181B1A");
+    expect(response.body).toContain("--foreground: #fafafa");
+    expect(response.body).toContain("--foreground-muted: #A1A5A4");
+    expect(response.body).toContain("--border: #252B2A");
+    expect(response.body).toContain("--border-accent: #2F3534");
+    expect(response.body).toContain("--accent: #20744A");
+    expect(response.body).toContain("--destructive: #c64f43");
+    expect(response.body).toContain('class="primary"');
+    expect(response.body).not.toContain("function renderQrPattern");
+    expect(response.body).toContain("[hidden] { display: none !important; }");
+    expect(response.body).toContain("calc(100vw - 2rem)");
+    expect(response.body).toContain("17rem");
+    expect(response.body).not.toContain("linear-gradient");
+    expect(response.body).not.toContain("--amber");
+    expect(response.body).not.toContain("text-transform: uppercase");
+    expect(response.body).not.toContain('name="username"');
+    expect(response.body).not.toContain('name="password"');
+    expect(response.body).not.toContain("Username");
+    expect(response.body).not.toContain("Password");
   });
 
   it("redirects unauthenticated machine page requests to login", async () => {
@@ -105,11 +134,56 @@ describe("admin UI", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toContain("text/html");
-    expect(response.body).toContain("Import Offer");
-    expect(response.body).toContain("Open Workspace");
+    expect(response.body).toContain('data-surface="passport-app"');
+    expect(response.body).toContain("Import offer");
+    expect(response.body).toContain("Open workspace");
+    expect(response.body).toContain("History");
+    expect(response.body).toContain("Reset TOTP enrollment");
+    expect(response.body).toContain("reset-totp-enrollment");
+    expect(response.body).toContain("/api/auth/enrollment/reset");
+    expect(response.body).toContain('class="button outline" href="/"');
+    expect(response.body).toContain('id="reset-confirmation" hidden');
+    expect(response.body).toContain("resetConfirmation.hidden = false");
+    expect(response.body).toContain('button.className = "small outline"');
+    expect(response.body).not.toContain("danger-panel");
+    expect(response.body).not.toContain("Machine control");
     expect(response.body).toContain('href="/"');
     expect(response.body).toContain("/api/admin/machines/import-offer");
     expect(response.body).not.toContain("offer=");
+  });
+
+  it("serves authenticated access and workspace history pages", async () => {
+    await buildUiTestServer();
+    const cookie = await loginCookie();
+
+    const response = await server!.inject({
+      method: "GET",
+      url: "/admin/history",
+      headers: { cookie }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/html");
+    expect(response.body).toContain('data-surface="passport-app"');
+    expect(response.body).toContain("Access history");
+    expect(response.body).toContain("Workspace history");
+    expect(response.body).toContain("/api/admin/history/access");
+    expect(response.body).toContain("/api/admin/history/workspace");
+    expect(response.body).toContain('class="button outline" href="/admin/machines"');
+    expect(response.body).toContain('href="/admin/machines"');
+    expect(response.body).toContain('href="/"');
+  });
+
+  it("redirects unauthenticated history page requests to login", async () => {
+    await buildUiTestServer();
+
+    const response = await server!.inject({
+      method: "GET",
+      url: "/admin/history"
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe("/login");
   });
 
   it("supports the browser machine import, list, and delete workflow without exposing raw offers", async () => {
@@ -150,6 +224,7 @@ describe("admin UI", () => {
 
     expect(page.statusCode).toBe(200);
     expect(page.body).toContain('href="/"');
+    expect(page.body).toContain('href="/admin/history"');
     expect(page.body).toContain("/api/admin/machines/import-offer");
     expect(page.body).toContain("/api/admin/machines");
     expect(page.body).toContain("method: \"DELETE\"");

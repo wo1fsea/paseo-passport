@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/index";
-import { hashPassword } from "../src/auth/password";
 import { generateTotp } from "../src/auth/totp";
 
-const ADMIN_USER = "admin";
-const PASSWORD = "correct horse battery staple";
-const TOTP_SECRET = "JYGSUSLDHDAYZHD4D4JHVYXFWL3H5K7V";
+const OPERATOR_NAME = "operator";
+const DATA_KEY = "0123456789abcdef0123456789abcdef";
 const SESSION_SECRET = "test-session-secret-with-enough-entropy";
 
 let server: FastifyInstance | undefined;
@@ -21,28 +19,31 @@ function encodeOffer(value: unknown): string {
 }
 
 async function buildAuthenticatedServer(): Promise<{ cookie: string }> {
-  const passwordHash = await hashPassword(PASSWORD);
   server = buildServer({
-    adminUser: ADMIN_USER,
     cookieSecure: false,
+    dataKey: DATA_KEY,
     dbPath: ":memory:",
     host: "127.0.0.1",
+    localAuthBypass: false,
     nodeEnv: "test",
-    passwordHash,
+    operatorName: OPERATOR_NAME,
     port: 7317,
     sessionSecret: SESSION_SECRET,
     sessionTtlSeconds: 60,
-    staticDir: "./public",
-    totpSecret: TOTP_SECRET
+    staticDir: "./public"
   });
+
+  const start = await server.inject({
+    method: "POST",
+    url: "/api/auth/enrollment/start"
+  });
+  const secret = start.json<{ manualSecret: string }>().manualSecret;
 
   const login = await server.inject({
     method: "POST",
-    url: "/api/auth/login",
+    url: "/api/auth/enrollment/complete",
     payload: {
-      username: ADMIN_USER,
-      password: PASSWORD,
-      totp: generateTotp(TOTP_SECRET)
+      totp: generateTotp(secret)
     }
   });
   const setCookie = login.headers["set-cookie"];
@@ -57,19 +58,18 @@ async function buildAuthenticatedServer(): Promise<{ cookie: string }> {
 
 describe("GET /api/passport/hosts", () => {
   it("requires auth", async () => {
-    const passwordHash = await hashPassword(PASSWORD);
     server = buildServer({
-      adminUser: ADMIN_USER,
       cookieSecure: false,
+      dataKey: DATA_KEY,
       dbPath: ":memory:",
       host: "127.0.0.1",
+      localAuthBypass: false,
       nodeEnv: "test",
-      passwordHash,
+      operatorName: OPERATOR_NAME,
       port: 7317,
       sessionSecret: SESSION_SECRET,
       sessionTtlSeconds: 60,
-      staticDir: "./public",
-      totpSecret: TOTP_SECRET
+      staticDir: "./public"
     });
 
     const response = await server.inject({
@@ -141,6 +141,55 @@ describe("GET /api/passport/hosts", () => {
     ]);
   });
 
+  it("records sanitized host profile load workspace history", async () => {
+    const { cookie } = await buildAuthenticatedServer();
+    const offerUrl = `https://app.paseo.sh/#offer=${encodeOffer({
+      v: 2,
+      serverId: "srv_history",
+      daemonPublicKeyB64: "provider-credential-like-public-key",
+      relay: {
+        endpoint: "relay-history.paseo.sh:443"
+      }
+    })}`;
+
+    await server!.inject({
+      method: "POST",
+      url: "/api/admin/machines/import-offer",
+      headers: { cookie },
+      payload: {
+        label: "History machine",
+        offerUrl
+      }
+    });
+    const hosts = await server!.inject({
+      method: "GET",
+      url: "/api/passport/hosts",
+      headers: {
+        cookie,
+        "user-agent": "raw host loader"
+      },
+      remoteAddress: "198.51.100.20"
+    });
+    const history = await server!.inject({
+      method: "GET",
+      url: "/api/admin/history/workspace",
+      headers: { cookie }
+    });
+
+    expect(hosts.statusCode).toBe(200);
+    expect(history.statusCode).toBe(200);
+    expect(history.json().events).toEqual([
+      expect.objectContaining({
+        eventType: "host_profile_loaded",
+        sourceIp: "198.51.100.20"
+      })
+    ]);
+    expect(history.body).not.toContain("offer=");
+    expect(history.body).not.toContain(offerUrl);
+    expect(history.body).not.toContain("raw host loader");
+    expect(history.body).not.toContain("provider-credential-like-public-key");
+  });
+
   it("excludes deleted machines and server-side secret fields from host profiles", async () => {
     const { cookie } = await buildAuthenticatedServer();
     const keptOfferUrl = `https://app.paseo.sh/#offer=${encodeOffer({
@@ -197,8 +246,6 @@ describe("GET /api/passport/hosts", () => {
     expect(body).not.toContain("relay-deleted.paseo.sh:443");
     expect(body).not.toContain("deleted-daemon-public-key");
     expect(body).not.toContain("offer=");
-    expect(body).not.toContain(PASSWORD);
-    expect(body).not.toContain(TOTP_SECRET);
     expect(body).not.toContain(SESSION_SECRET);
     expect(response.json()).toEqual([
       {

@@ -1,5 +1,6 @@
-import type { FastifyInstance } from "fastify";
-import { createAuthMiddleware } from "../auth/middleware";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { createAuthMiddleware, readCookie } from "../auth/middleware";
+import { authenticateSession, SESSION_COOKIE_NAME } from "../auth/sessions";
 import type { PassportDatabase } from "../db";
 import { machineToHostProfile } from "./host-profile";
 import { parseRelayOffer } from "./offer";
@@ -28,6 +29,21 @@ export async function registerMachineRoutes(
     localAuthBypass: options.localAuthBypass,
     now,
     sessionSecret: options.sessionSecret
+  });
+
+  server.addHook("onRequest", async (request) => {
+    if (
+      request.method === "GET" &&
+      isWorkspaceDocumentPath(request.url) &&
+      isAuthenticated(request, options, now())
+    ) {
+      options.db.recordWorkspaceEvent({
+        eventType: "workspace_opened",
+        occurredAt: now(),
+        sourceIp: request.ip || null,
+        details: null
+      });
+    }
   });
 
   server.post(
@@ -75,8 +91,17 @@ export async function registerMachineRoutes(
     reply.code(204).send();
   });
 
-  server.get("/api/passport/hosts", { preHandler: requireAuth }, async () => {
-    return options.db.listActiveMachines().map(machineToHostProfile);
+  server.get("/api/passport/hosts", { preHandler: requireAuth }, async (request) => {
+    const machines = options.db.listActiveMachines();
+    options.db.recordWorkspaceEvent({
+      eventType: "host_profile_loaded",
+      occurredAt: now(),
+      sourceIp: request.ip || null,
+      details: {
+        hostCount: machines.length
+      }
+    });
+    return machines.map(machineToHostProfile);
   });
 }
 
@@ -119,4 +144,37 @@ function serializeMachine(machine: {
     createdAt: machine.createdAt.toISOString(),
     updatedAt: machine.updatedAt.toISOString()
   };
+}
+
+function isAuthenticated(
+  request: FastifyRequest,
+  options: MachineRoutesOptions,
+  now: Date
+): boolean {
+  if (options.localAuthBypass) {
+    return true;
+  }
+
+  return Boolean(
+    authenticateSession({
+      db: options.db,
+      now,
+      sessionSecret: options.sessionSecret,
+      token: readCookie(request.headers.cookie, SESSION_COOKIE_NAME)
+    })
+  );
+}
+
+function isWorkspaceDocumentPath(url: string): boolean {
+  const pathname = new URL(url, "http://passport.local").pathname;
+  if (
+    pathname === "/login" ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/passport-hosts.js"
+  ) {
+    return false;
+  }
+
+  return pathname === "/" || !/\.[A-Za-z0-9]+$/.test(pathname);
 }

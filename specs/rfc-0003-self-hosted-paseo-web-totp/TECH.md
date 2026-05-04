@@ -258,6 +258,41 @@ The UI should use a dark Paseo-like app surface, compact centered auth panels,
 clear primary actions, and restrained controls. It should not retain the
 phase-A generic light admin-panel look.
 
+The visual contract is anchored to upstream Paseo design guidance in
+`vendor/paseo/docs/design-system.md` and tokens in
+`vendor/paseo/packages/app/src/styles/theme.ts`. Passport pages are not a
+separate security-admin product; they are the local authentication and
+operator-entry shell around the self-hosted Paseo web app.
+
+Required visual constraints:
+
+- Overall character is minimal, spacious, quiet, and work-focused.
+- Use Paseo-derived neutral app surfaces, foreground, muted foreground,
+  border, accent, destructive, radius, spacing, and text scale values. Do not
+  introduce a new green/amber security-console palette or saturated gradients.
+- Use sentence-case copy and imperative button labels.
+- Top-level titles should be light and compact, closer to Paseo screen headers
+  than large admin dashboard headings.
+- At most one filled primary action appears in a surface. Secondary, row-level,
+  reset, and navigation actions should be outline or ghost style unless they are
+  inside an explicit confirmation state.
+- Destructive color appears only after the operator has indicated destructive
+  intent; the reset entry point is quiet and the destructive final action is
+  confirmed.
+- Settings-like pages use a centered, readable content column and section/card
+  groups made of rows with dividers. Avoid nested cards, oversized panels, and
+  marketing/admin-dashboard composition.
+- Registry and history entries render as dense Paseo-style rows with primary
+  and secondary text, optional trailing actions, and no per-row heavy card
+  chrome.
+- Login and first-enrollment flows use compact modal/sheet-like panels inside a
+  full-screen app surface. The QR block must be neutral, readable, and stable on
+  narrow mobile widths.
+- Mobile layouts are first-class: enrollment, login, registry/reset, and
+  history must each be screenshot-validated at a 390px-class viewport with no
+  horizontal overflow, clipped text, overlapping controls, or unusable QR/manual
+  secret content.
+
 When no TOTP enrollment exists, the enrollment UI must be a full-screen
 Paseo-styled first-run surface with a centered QR panel. It may visually feel
 modal-like, but it is not an overlay on top of the workspace because no
@@ -282,7 +317,11 @@ Replace the generated shell with a built upstream Paseo web app:
 4. Use the confirmed web build command:
    `npm run build --workspace=@getpaseo/app` from `vendor/paseo`, which exports
    to `vendor/paseo/packages/app/dist`.
-5. Patch only the minimum host registry boot path needed to load Passport hosts.
+5. Patch only the minimum host registry boot path needed to load Passport
+   hosts: `packages/app/src/runtime/host-runtime.ts`.
+   `HostRuntimeStore.runBoot()` must call a new Passport host loader
+   immediately after `await this.loadFromStorage();` and before local daemon
+   override, E2E, desktop daemon, or localhost fallback handling.
 6. Keep Passport-owned patches as tracked files outside the submodule; avoid
    committing modified upstream files directly inside the submodule.
 7. Serve the built app from Passport under the protected workspace route.
@@ -304,6 +343,26 @@ Agent setup environment:
 
 The resulting user experience must be the upstream Paseo interactive UI, not a
 Passport list shell.
+
+Confirmed host registry patch point:
+
+- `packages/app/src/runtime/host-runtime.ts`
+  - `HostRuntimeStore.runBoot()` currently loads browser registry state with
+    `await this.loadFromStorage();`.
+  - Add `await this.loadPassportHosts();` directly after that call.
+  - This runs before configured local daemon override, E2E short-circuit,
+    desktop daemon short-circuit, and localhost fallback.
+- `packages/app/src/types/host-connection.ts`
+  - Reuse `normalizeStoredHostProfile()` to validate Passport host profiles.
+- Add `packages/app/src/runtime/passport-hosts.ts`
+  - Fetch `/api/passport/hosts` with `credentials: "include"`.
+  - Treat `401` as no Passport hosts.
+  - Return only normalized `HostProfile[]`.
+- Merge by `serverId`, preserving browser-only local hosts.
+- Do not persist Passport-loaded hosts into AsyncStorage in the MVP. They are
+  server-owned registry data and should be refreshed from Passport each boot.
+- Do not change daemon protocol, provider credentials, permissions, project
+  open logic, or agent-session logic.
 
 ## Security Requirements
 

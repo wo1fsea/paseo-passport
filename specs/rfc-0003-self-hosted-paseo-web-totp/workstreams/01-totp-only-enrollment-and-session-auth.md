@@ -4,8 +4,8 @@ workstream: 01
 language: en-US
 audience: agent
 doc_type: workstream
-status: draft
-owner: unassigned
+status: implemented
+owner: worker-01-totp-auth
 depends_on: []
 updated: 2026-05-04
 ---
@@ -47,3 +47,35 @@ state machine.
 - Reset returns the system to first-enrollment mode.
 - Lost-device recovery is available only through the local emergency reset
   command, not through a public web recovery flow.
+
+## Worker Completion
+
+- Worker: `worker-01-totp-auth`
+- Status: implemented with concerns
+- Files changed:
+  - `.env.example`
+  - `apps/passport-server/migrations/001_initial.sql`
+  - `apps/passport-server/src/auth/middleware.ts`
+  - `apps/passport-server/src/auth/routes.ts`
+  - `apps/passport-server/src/auth/totp.ts`
+  - `apps/passport-server/src/config.ts`
+  - `apps/passport-server/src/db.ts`
+  - `apps/passport-server/src/index.ts`
+  - `apps/passport-server/tests/auth.test.ts`
+  - `apps/passport-server/tests/config.test.ts`
+  - `apps/passport-server/tests/local-auth-bypass.test.ts`
+  - `scripts/init-auth.ts`
+- TDD evidence:
+  - Red: `npm test -- --run auth`, `npm test -- --run config`, and
+    `npm test -- --run local-auth-bypass` failed against the old password plus
+    TOTP contract and missing enrollment/config behavior.
+  - Green: `npm test -- --run auth`, `npm test -- --run config`, and
+    `npm test -- --run local-auth-bypass` passed after implementation.
+  - Broader validation: `npm run build` passed.
+- Residual risk:
+  - The assigned file list did not include `package.json`, so the exact
+    `npm run passport:reset-totp -- --db ...` package-script alias was not
+    added. The reset command behavior is implemented in `scripts/init-auth.ts`
+    as `tsx scripts/init-auth.ts reset-totp --db <passport.sqlite>`.
+  - UI pages are still handled by later workstream 02; this workstream exposes
+    the enrollment/login/reset API state machine only.

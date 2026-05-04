@@ -1,6 +1,7 @@
 .out/
 .dispatch/
 .playwright-mcp/
+test-results/
 node_modules/
 dist/
 apps/*/dist/

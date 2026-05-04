@@ -1,14 +1,213 @@
+diff --git a/packages/app/src/runtime/host-runtime.test.ts b/packages/app/src/runtime/host-runtime.test.ts
+index 2507d278..07ae97c1 100644
+--- a/packages/app/src/runtime/host-runtime.test.ts
++++ b/packages/app/src/runtime/host-runtime.test.ts
+@@ -1,4 +1,5 @@
+-import { describe, expect, it, vi } from "vitest";
++import AsyncStorage from "@react-native-async-storage/async-storage";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+ import type {
+   DaemonClient,
+   ConnectionState,
+@@ -15,6 +16,18 @@ import {
+   type HostRuntimeSnapshot,
+ } from "./host-runtime";
+
++vi.mock("@react-native-async-storage/async-storage", () => ({
++  default: {
++    getItem: vi.fn(),
++    setItem: vi.fn(),
++    removeItem: vi.fn(),
++  },
++}));
++
++const mockAsyncStorage = vi.mocked(AsyncStorage);
++const REGISTRY_STORAGE_KEY = "@paseo:daemon-registry";
++const E2E_STORAGE_KEY = "@paseo:e2e";
++
+ class FakeDaemonClient {
+   private state: ConnectionState = { status: "idle" };
+   private listeners = new Set<(status: ConnectionState) => void>();
+@@ -1159,6 +1172,168 @@ describe("HostRuntimeController", () => {
+ });
+
+ describe("HostRuntimeStore", () => {
++  beforeEach(() => {
++    mockAsyncStorage.getItem.mockImplementation(async (key) => {
++      if (key === E2E_STORAGE_KEY) {
++        return "1";
++      }
++      return null;
++    });
++    mockAsyncStorage.setItem.mockResolvedValue(undefined);
++    mockAsyncStorage.removeItem.mockResolvedValue(undefined);
++  });
++
++  afterEach(() => {
++    vi.unstubAllGlobals();
++  });
++
++  it("treats unauthenticated Passport hosts as an empty boot registry", async () => {
++    const fetchImpl = vi.fn(async () => new Response("Unauthorized", { status: 401 }));
++    vi.stubGlobal("fetch", fetchImpl);
++    const store = new HostRuntimeStore({
++      deps: {
++        createClient: () => new FakeDaemonClient() as unknown as DaemonClient,
++        connectToDaemon: async () => {
++          throw new Error("no fallback daemon");
++        },
++        getClientId: async () => "cid_test_runtime",
++      },
++    });
++
++    store.boot();
++    await vi.waitFor(() => {
++      expect(fetchImpl).toHaveBeenCalledWith("/api/passport/hosts", {
++        credentials: "include",
++      });
++    });
++
++    expect(store.getHosts()).toEqual([]);
++    store.syncHosts([]);
++  });
++
++  it("filters invalid Passport host profiles during boot", async () => {
++    const passportHost = makeHost({
++      serverId: "srv_passport",
++      label: "Passport host",
++    });
++    vi.stubGlobal(
++      "fetch",
++      vi.fn(async () =>
++        Response.json([
++          { serverId: "srv_invalid", connections: [] },
++          { serverId: "", connections: passportHost.connections },
++          passportHost,
++        ]),
++      ),
++    );
++    const store = new HostRuntimeStore({
++      deps: {
++        createClient: () => new FakeDaemonClient() as unknown as DaemonClient,
++        connectToDaemon: async () => {
++          throw new Error("no fallback daemon");
++        },
++        getClientId: async () => "cid_test_runtime",
++      },
++    });
++
++    store.boot();
++    await vi.waitFor(() => {
++      expect(store.getHosts().map((host) => host.serverId)).toEqual(["srv_passport"]);
++    });
++
++    store.syncHosts([]);
++  });
++
++  it("merges Passport hosts by server id while preserving browser-only hosts", async () => {
++    const browserOnlyHost = makeHost({
++      serverId: "srv_browser",
++      label: "Browser only",
++    });
++    const browserCopyOfPassportHost = makeHost({
++      serverId: "srv_shared",
++      label: "Old browser label",
++      connections: [
++        {
++          id: "direct:old.example.test:6767",
++          type: "directTcp",
++          endpoint: "old.example.test:6767",
++        },
++      ],
++    });
++    const passportCopy = makeHost({
++      serverId: "srv_shared",
++      label: "Passport label",
++      connections: [
++        {
++          id: "relay:relay.paseo.sh:443",
++          type: "relay",
++          relayEndpoint: "relay.paseo.sh:443",
++          daemonPublicKeyB64: "pk_passport",
++        },
++      ],
++    });
++    mockAsyncStorage.getItem.mockImplementation(async (key) => {
++      if (key === REGISTRY_STORAGE_KEY) {
++        return JSON.stringify([browserOnlyHost, browserCopyOfPassportHost]);
++      }
++      if (key === E2E_STORAGE_KEY) {
++        return "1";
++      }
++      return null;
++    });
++    vi.stubGlobal("fetch", vi.fn(async () => Response.json([passportCopy])));
++    const store = new HostRuntimeStore({
++      deps: {
++        createClient: () => new FakeDaemonClient() as unknown as DaemonClient,
++        connectToDaemon: async () => {
++          throw new Error("no fallback daemon");
++        },
++        getClientId: async () => "cid_test_runtime",
++      },
++    });
++
++    store.boot();
++    await vi.waitFor(() => {
++      expect(store.getHosts().map((host) => host.serverId)).toEqual(["srv_browser", "srv_shared"]);
++      expect(store.getHosts().find((host) => host.serverId === "srv_shared")?.label).toBe(
++        "Passport label",
++      );
++    });
++
++    expect(store.getHosts().find((host) => host.serverId === "srv_browser")?.label).toBe(
++      "Browser only",
++    );
++    store.syncHosts([]);
++  });
++
++  it("does not write Passport-loaded hosts into browser registry storage", async () => {
++    const passportHost = makeHost({
++      serverId: "srv_passport",
++      label: "Passport host",
++    });
++    vi.stubGlobal("fetch", vi.fn(async () => Response.json([passportHost])));
++    const store = new HostRuntimeStore({
++      deps: {
++        createClient: () => new FakeDaemonClient() as unknown as DaemonClient,
++        connectToDaemon: async () => {
++          throw new Error("no fallback daemon");
++        },
++        getClientId: async () => "cid_test_runtime",
++      },
++    });
++
++    store.boot();
++    await vi.waitFor(() => {
++      expect(store.getHosts().map((host) => host.serverId)).toEqual(["srv_passport"]);
++    });
++
++    expect(mockAsyncStorage.setItem).not.toHaveBeenCalledWith(
++      REGISTRY_STORAGE_KEY,
++      expect.stringContaining("srv_passport"),
++    );
++    store.syncHosts([]);
++  });
++
+   it("bootstraps agent directory subscription when host transitions online", async () => {
+     const host = makeHost({
+       connections: [
 diff --git a/packages/app/src/runtime/host-runtime.ts b/packages/app/src/runtime/host-runtime.ts
-index 351b5a1..847fb91 100644
+index 351b5a1f..1b57f59e 100644
 --- a/packages/app/src/runtime/host-runtime.ts
 +++ b/packages/app/src/runtime/host-runtime.ts
-@@ -39,6 +39,7 @@ import {
+@@ -37,6 +37,7 @@ import {
+   buildLocalDaemonTransportUrl,
+   createDesktopLocalDaemonTransportFactory,
  } from "@/desktop/daemon/desktop-daemon-transport";
++import { loadPassportHostProfiles } from "@/runtime/passport-hosts";
  import { replaceFetchedAgentDirectory } from "@/utils/agent-directory-sync";
  import { useSessionStore } from "@/stores/session-store";
-+import { loadPassportHostProfiles } from "@/runtime/passport-hosts";
-
- export type HostRuntimeConnectionStatus = "idle" | "connecting" | "online" | "offline" | "error";
 
 @@ -179,6 +180,20 @@ function readFetchAgentsNextCursor(
    return null;
@@ -63,7 +262,7 @@ index 351b5a1..847fb91 100644
      if (!connection || registryHasConnection(this.hosts, connection)) {
 diff --git a/packages/app/src/runtime/passport-hosts.ts b/packages/app/src/runtime/passport-hosts.ts
 new file mode 100644
-index 0000000..05a0138
+index 00000000..05a0138a
 --- /dev/null
 +++ b/packages/app/src/runtime/passport-hosts.ts
 @@ -0,0 +1,23 @@

@@ -8,7 +8,7 @@ updated: 2026-05-04
 # Upstream Paseo
 
 This document is the source of truth for Paseo Passport's upstream web
-provenance, license handling, and phase-A patch contract.
+provenance, build process, license handling, and host-registry patch contract.
 
 Paseo Passport's rfc-0003 target uses upstream Paseo source from:
 
@@ -48,17 +48,28 @@ apps/passport-server/public/
 Agent setup should initialize `vendor/paseo`, check out `v0.1.67`, and verify
 HEAD is `15a2e3bdcbefda97587f74e499d6b81a278d458c`. The annotated tag object
 itself is `0b5345a70ee290fb3b58fdadec08a80b51405148`; use the peeled commit
-for submodule HEAD checks. Do not apply the phase-A placeholder patch to this
-release until rfc-0003 workstream 05 confirms the current upstream host runtime
-paths and regenerates or validates the patch.
+for submodule HEAD checks. The rfc-0003 workstream 05 patch is regenerated
+against this release and validated by `scripts/apply-paseo-patch.ts`.
 
-## Confirmed Web Build
+## Passport Build Command
 
-The rfc-0003 agent setup verified the upstream web build on 2026-05-04:
+The repository build command for the self-hosted web app is:
+
+```sh
+npm run build:paseo-web
+```
+
+It verifies that `vendor/paseo` is checked out at `v0.1.67`
+(`15a2e3bdcbefda97587f74e499d6b81a278d458c`), applies
+`patches/paseo-web-passport-hosts.patch` when needed, runs the upstream web
+build, and copies `vendor/paseo/packages/app/dist` into
+`apps/passport-server/public/`. The copied public output includes
+`upstream-paseo-LICENSE.txt` from the upstream repository.
+
+The underlying upstream build command remains:
 
 ```sh
 cd vendor/paseo
-npm ci
 npm run build --workspace=@getpaseo/app
 ```
 
@@ -75,8 +86,9 @@ Dispatch evidence for the confirmed offer and host profile contracts is stored
 under `.dispatch/runs/20260503T170721136859Z/artifacts/upstream-paseo-contract.json`.
 The earlier dispatch evidence referenced
 `a198a33ff525c6addc5e6fd2bd75b298ad6ce409`; the public upstream ref checked
-for this workstream did not expose that object, so the reproducible patch
-placeholder below is based on public `main` at `4338f5b...`.
+for this workstream did not expose that object. The active reproducible patch
+is based on the pinned `v0.1.67` commit
+`15a2e3bdcbefda97587f74e499d6b81a278d458c`.
 
 ## Patch Contract
 
@@ -85,32 +97,47 @@ The MVP patch must only change the web host registry load path:
 - Fetch `/api/passport/hosts` with `credentials: "include"`.
 - Treat `401` as no Passport hosts.
 - Merge Passport hosts into the existing host runtime store.
+- Patch `packages/app/src/runtime/host-runtime.ts` by calling
+  `await this.loadPassportHosts();` immediately after
+  `HostRuntimeStore.runBoot()` calls `await this.loadFromStorage();`.
+- Reuse `normalizeStoredHostProfile()` from
+  `packages/app/src/types/host-connection.ts`.
+- Add the loader in `packages/app/src/runtime/passport-hosts.ts`.
+- Preserve browser-only local hosts and do not persist Passport-loaded hosts to
+  AsyncStorage in the MVP.
 - Do not change daemon protocol, provider credentials, agent session protocol,
   or permission behavior.
 
-The reproducible patch placeholder lives at
-`patches/paseo-web-passport-hosts.patch`. It records the only permitted upstream
-behavior change for the future full Paseo web integration: add a
-`loadPassportHostProfiles()` helper, fetch `/api/passport/hosts` with included
-cookies, treat `401` as no server hosts, and merge the returned `HostProfile[]`
-after the existing local host registry load.
+The reproducible patch lives at `patches/paseo-web-passport-hosts.patch`. It
+records the only permitted upstream behavior change for the full Paseo web
+integration: add a `loadPassportHostProfiles()` helper, fetch
+`/api/passport/hosts` with included cookies, treat `401` as no server hosts,
+normalize returned profiles through `normalizeStoredHostProfile()`, and merge
+the returned `HostProfile[]` after the existing local host registry load.
 
-When `vendor/paseo` is present at the confirmed commit, run:
+When `vendor/paseo` is present at the confirmed commit, the patch can be
+checked/applied directly with:
 
 ```sh
 npx tsx scripts/apply-paseo-patch.ts
 ```
 
-For this local first-phase MVP, `scripts/build-paseo-web.ts` produces a small
-Passport workspace shell in `apps/passport-server/public/` that exercises the
-same authenticated `/api/passport/hosts` contract and a local registry merge
-using upstream's web registry key, `localStorage["@paseo:daemon-registry"]`.
+The patch script is idempotent: it applies the patch when missing and exits
+successfully when the patch is already present. `npm run build:paseo-web` calls
+the patch script before building so a clean clone can reproduce the Passport
+host-registry build output.
 
-This shell is not the full upstream Paseo workspace. Replace it only after an
-operator-approved workstream vendors or clones the pinned upstream tree,
-confirms the current host runtime file paths and `HostProfile` normalization
-entry point, applies `patches/paseo-web-passport-hosts.patch`, runs the upstream
-web build, and copies the built web output into `apps/passport-server/public/`.
+Workstream 04 replaced the earlier local Passport workspace shell with the
+copied upstream web build. Workstream 05 applied and validated the
+host-registry patch against the pinned upstream source.
+
+Validated on 2026-05-04:
+
+- `npm run test --workspace=@getpaseo/app -- host-runtime` from
+  `vendor/paseo`.
+- `npx tsx scripts/apply-paseo-patch.ts`.
+- `npm run build:paseo-web`.
+- `npm run build`.
 
 ## Local Test Mode
 

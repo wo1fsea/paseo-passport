@@ -1,80 +1,72 @@
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import { hashPassword } from "../apps/passport-server/src/auth/password";
-import { createTotpUri, generateTotpSecret } from "../apps/passport-server/src/auth/totp";
+import { createPassportDb } from "../apps/passport-server/src/db";
 
-interface Args {
-  username: string;
-  issuer: string;
-  password?: string;
+interface ResetArgs {
+  dbPath: string;
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
-  const password = args.password ?? (await promptPassword());
-  const passwordHash = await hashPassword(password);
-  const totpSecret = generateTotpSecret();
-  const otpauthUrl = createTotpUri({
-    issuer: args.issuer,
-    secret: totpSecret,
-    username: args.username
-  });
-
-  console.log(`PASSPORT_ADMIN_USER=${args.username}`);
-  console.log(`PASSPORT_PASSWORD_HASH=${passwordHash}`);
-  console.log(`PASSPORT_TOTP_SECRET=${totpSecret}`);
-  console.log(`PASSPORT_TOTP_URI=${otpauthUrl}`);
+export interface EmergencyResetOptions {
+  dbPath: string;
+  now?: Date;
 }
 
-function parseArgs(argv: string[]): Args {
-  const args: Args = {
-    issuer: "Paseo Passport",
-    username: "admin"
-  };
+export interface EmergencyResetResult {
+  enrollmentCleared: boolean;
+  sessionsRevoked: number;
+  message: string;
+}
 
-  for (let index = 0; index < argv.length; index += 1) {
+export function emergencyResetTotp(options: EmergencyResetOptions): EmergencyResetResult {
+  const db = createPassportDb({ path: options.dbPath });
+  const now = options.now ?? new Date();
+
+  try {
+    const enrollmentCleared = db.clearTotpEnrollment();
+    const sessionsRevoked = db.revokeAllSessions(now);
+
+    return {
+      enrollmentCleared,
+      sessionsRevoked,
+      message: `TOTP enrollment reset. Revoked ${sessionsRevoked} active session(s).`
+    };
+  } finally {
+    db.close();
+  }
+}
+
+function parseArgs(argv: string[]): ResetArgs {
+  if (argv[0] !== "reset-totp") {
+    throw new Error("Usage: tsx scripts/init-auth.ts reset-totp --db <passport.sqlite>");
+  }
+
+  let dbPath = "";
+  for (let index = 1; index < argv.length; index += 1) {
     const value = argv[index];
     const next = argv[index + 1];
 
-    if (value === "--username" && next) {
-      args.username = next;
-      index += 1;
-    } else if (value === "--issuer" && next) {
-      args.issuer = next;
-      index += 1;
-    } else if (value === "--password" && next) {
-      args.password = next;
+    if (value === "--db" && next) {
+      dbPath = next;
       index += 1;
     } else {
       throw new Error(`Unknown or incomplete argument: ${value}`);
     }
   }
 
-  return args;
+  if (!dbPath) {
+    throw new Error("Usage: tsx scripts/init-auth.ts reset-totp --db <passport.sqlite>");
+  }
+
+  return { dbPath };
 }
 
-async function promptPassword(): Promise<string> {
-  const readline = createInterface({ input, output });
-
+if (require.main === module) {
   try {
-    const password = await readline.question("Admin password: ");
-    const confirmation = await readline.question("Confirm admin password: ");
-
-    if (password.length < 12) {
-      throw new Error("Admin password must be at least 12 characters.");
-    }
-
-    if (password !== confirmation) {
-      throw new Error("Admin passwords do not match.");
-    }
-
-    return password;
-  } finally {
-    readline.close();
+    const args = parseArgs(process.argv.slice(2));
+    const result = emergencyResetTotp({
+      dbPath: args.dbPath
+    });
+    console.log(result.message);
+  } catch (error: unknown) {
+    console.error(error);
+    process.exit(1);
   }
 }
-
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});

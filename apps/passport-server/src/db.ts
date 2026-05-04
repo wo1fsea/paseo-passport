@@ -15,10 +15,26 @@ export interface PassportDatabase {
   createSession(record: SessionRecord): void;
   findSessionByHash(sessionHash: string): SessionRecord | null;
   revokeSessionByHash(sessionHash: string, revokedAt: Date): void;
+  revokeAllSessions(revokedAt: Date): number;
+  getTotpEnrollment(): TotpEnrollmentRecord | null;
+  saveTotpEnrollment(record: TotpEnrollmentRecord): void;
+  clearTotpEnrollment(options?: { recordEmergencyReset?: boolean }): boolean;
+  recordAccessEvent(input: RecordAccessEventInput): void;
+  listAccessEvents(limit?: number): AccessEventRecord[];
+  recordWorkspaceEvent(input: RecordWorkspaceEventInput): void;
+  listWorkspaceEvents(limit?: number): WorkspaceEventRecord[];
   upsertMachine(input: UpsertMachineInput): MachineRecord;
   listActiveMachines(): MachineRecord[];
   deleteMachine(id: string, deletedAt: Date): boolean;
   close(): void;
+}
+
+export interface TotpEnrollmentRecord {
+  totpSecretEncrypted: string;
+  totpSecretNonce: string;
+  totpSecretTag: string;
+  enrolledAt: Date;
+  updatedAt: Date;
 }
 
 export interface MachineRecord {
@@ -38,6 +54,55 @@ export interface UpsertMachineInput {
   relayEndpoint: string;
   daemonPublicKeyB64: string;
   now: Date;
+}
+
+export type AccessEventType =
+  | "totp_enrollment_started"
+  | "totp_enrollment_succeeded"
+  | "totp_login_succeeded"
+  | "totp_login_failed"
+  | "logout"
+  | "totp_reset_succeeded"
+  | "totp_emergency_reset_succeeded"
+  | "local_auth_bypass_access";
+
+export type AccessEventOutcome = "success" | "failure";
+
+export interface RecordAccessEventInput {
+  eventType: AccessEventType;
+  outcome: AccessEventOutcome;
+  occurredAt: Date;
+  sourceIp?: string | null;
+  userAgentHash?: string | null;
+  details?: Record<string, unknown> | null;
+}
+
+export interface AccessEventRecord extends RecordAccessEventInput {
+  id: string;
+  sourceIp: string | null;
+  userAgentHash: string | null;
+  details: Record<string, unknown> | null;
+}
+
+export type WorkspaceEventType =
+  | "workspace_opened"
+  | "host_profile_loaded";
+
+export interface RecordWorkspaceEventInput {
+  eventType: WorkspaceEventType;
+  occurredAt: Date;
+  sourceIp?: string | null;
+  serverId?: string | null;
+  projectKey?: string | null;
+  details?: Record<string, unknown> | null;
+}
+
+export interface WorkspaceEventRecord extends RecordWorkspaceEventInput {
+  id: string;
+  sourceIp: string | null;
+  serverId: string | null;
+  projectKey: string | null;
+  details: Record<string, unknown> | null;
 }
 
 interface PassportDbOptions {
@@ -73,6 +138,41 @@ create table if not exists machine_secrets (
   created_at text not null,
   updated_at text not null
 );
+
+create table if not exists auth_enrollment (
+  id integer primary key check (id = 1),
+  totp_secret_encrypted text not null,
+  totp_secret_nonce text not null,
+  totp_secret_tag text not null,
+  enrolled_at text not null,
+  updated_at text not null
+);
+
+create table if not exists access_events (
+  id text primary key,
+  event_type text not null,
+  outcome text not null,
+  occurred_at text not null,
+  source_ip text,
+  user_agent_hash text,
+  details_json text
+);
+
+create index if not exists access_events_recent_idx
+on access_events (occurred_at desc);
+
+create table if not exists workspace_events (
+  id text primary key,
+  event_type text not null,
+  occurred_at text not null,
+  source_ip text,
+  server_id text,
+  project_key text,
+  details_json text
+);
+
+create index if not exists workspace_events_recent_idx
+on workspace_events (occurred_at desc);
 `;
 
 export function createPassportDb(options: PassportDbOptions): PassportDatabase {
@@ -137,6 +237,137 @@ class SqlitePassportDatabase implements PassportDatabase {
          where session_hash = ? and revoked_at is null`
       )
       .run(revokedAt.toISOString(), sessionHash);
+  }
+
+  revokeAllSessions(revokedAt: Date): number {
+    const result = this.database
+      .prepare(
+        `update sessions
+         set revoked_at = ?
+         where revoked_at is null`
+      )
+      .run(revokedAt.toISOString());
+
+    return result.changes;
+  }
+
+  getTotpEnrollment(): TotpEnrollmentRecord | null {
+    const row = this.database
+      .prepare(
+        `select totp_secret_encrypted, totp_secret_nonce, totp_secret_tag,
+                enrolled_at, updated_at
+         from auth_enrollment
+         where id = 1`
+      )
+      .get() as Record<string, unknown> | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    return rowToTotpEnrollment(row);
+  }
+
+  saveTotpEnrollment(record: TotpEnrollmentRecord): void {
+    this.database
+      .prepare(
+        `insert into auth_enrollment (
+           id, totp_secret_encrypted, totp_secret_nonce, totp_secret_tag,
+           enrolled_at, updated_at
+         ) values (1, ?, ?, ?, ?, ?)
+         on conflict(id) do update set
+           totp_secret_encrypted = excluded.totp_secret_encrypted,
+           totp_secret_nonce = excluded.totp_secret_nonce,
+           totp_secret_tag = excluded.totp_secret_tag,
+           enrolled_at = excluded.enrolled_at,
+           updated_at = excluded.updated_at`
+      )
+      .run(
+        record.totpSecretEncrypted,
+        record.totpSecretNonce,
+        record.totpSecretTag,
+        record.enrolledAt.toISOString(),
+        record.updatedAt.toISOString()
+      );
+  }
+
+  clearTotpEnrollment(options: { recordEmergencyReset?: boolean } = {}): boolean {
+    const result = this.database.prepare(`delete from auth_enrollment where id = 1`).run();
+    if (options.recordEmergencyReset ?? true) {
+      this.recordAccessEvent({
+        eventType: "totp_emergency_reset_succeeded",
+        outcome: "success",
+        occurredAt: new Date(),
+        sourceIp: null,
+        userAgentHash: null,
+        details: null
+      });
+    }
+    return result.changes > 0;
+  }
+
+  recordAccessEvent(input: RecordAccessEventInput): void {
+    this.database
+      .prepare(
+        `insert into access_events (
+           id, event_type, outcome, occurred_at, source_ip, user_agent_hash, details_json
+         ) values (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        crypto.randomUUID(),
+        input.eventType,
+        input.outcome,
+        input.occurredAt.toISOString(),
+        input.sourceIp ?? null,
+        input.userAgentHash ?? null,
+        serializeDetails(input.details)
+      );
+    pruneNewestRows(this.database, "access_events", 3000);
+  }
+
+  listAccessEvents(limit = 50): AccessEventRecord[] {
+    const rows = this.database
+      .prepare(
+        `select id, event_type, outcome, occurred_at, source_ip, user_agent_hash, details_json
+         from access_events
+         order by occurred_at desc, rowid desc
+         limit ?`
+      )
+      .all(limit) as Record<string, unknown>[];
+
+    return rows.map(rowToAccessEvent);
+  }
+
+  recordWorkspaceEvent(input: RecordWorkspaceEventInput): void {
+    this.database
+      .prepare(
+        `insert into workspace_events (
+           id, event_type, occurred_at, source_ip, server_id, project_key, details_json
+         ) values (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        crypto.randomUUID(),
+        input.eventType,
+        input.occurredAt.toISOString(),
+        input.sourceIp ?? null,
+        input.serverId ?? null,
+        input.projectKey ?? null,
+        serializeDetails(input.details)
+      );
+    pruneNewestRows(this.database, "workspace_events", 3000);
+  }
+
+  listWorkspaceEvents(limit = 50): WorkspaceEventRecord[] {
+    const rows = this.database
+      .prepare(
+        `select id, event_type, occurred_at, source_ip, server_id, project_key, details_json
+         from workspace_events
+         order by occurred_at desc, rowid desc
+         limit ?`
+      )
+      .all(limit) as Record<string, unknown>[];
+
+    return rows.map(rowToWorkspaceEvent);
   }
 
   upsertMachine(input: UpsertMachineInput): MachineRecord {
@@ -251,6 +482,16 @@ class SqlitePassportDatabase implements PassportDatabase {
   }
 }
 
+function rowToTotpEnrollment(row: Record<string, unknown>): TotpEnrollmentRecord {
+  return {
+    totpSecretEncrypted: String(row.totp_secret_encrypted),
+    totpSecretNonce: String(row.totp_secret_nonce),
+    totpSecretTag: String(row.totp_secret_tag),
+    enrolledAt: new Date(String(row.enrolled_at)),
+    updatedAt: new Date(String(row.updated_at))
+  };
+}
+
 function rowToMachine(row: Record<string, unknown>): MachineRecord {
   return {
     id: String(row.id),
@@ -262,4 +503,65 @@ function rowToMachine(row: Record<string, unknown>): MachineRecord {
     createdAt: new Date(String(row.created_at)),
     updatedAt: new Date(String(row.updated_at))
   };
+}
+
+function rowToAccessEvent(row: Record<string, unknown>): AccessEventRecord {
+  return {
+    id: String(row.id),
+    eventType: String(row.event_type) as AccessEventType,
+    outcome: row.outcome === "failure" ? "failure" : "success",
+    occurredAt: new Date(String(row.occurred_at)),
+    sourceIp: row.source_ip ? String(row.source_ip) : null,
+    userAgentHash: row.user_agent_hash ? String(row.user_agent_hash) : null,
+    details: parseDetails(row.details_json)
+  };
+}
+
+function rowToWorkspaceEvent(row: Record<string, unknown>): WorkspaceEventRecord {
+  return {
+    id: String(row.id),
+    eventType: String(row.event_type) as WorkspaceEventType,
+    occurredAt: new Date(String(row.occurred_at)),
+    sourceIp: row.source_ip ? String(row.source_ip) : null,
+    serverId: row.server_id ? String(row.server_id) : null,
+    projectKey: row.project_key ? String(row.project_key) : null,
+    details: parseDetails(row.details_json)
+  };
+}
+
+function serializeDetails(details: Record<string, unknown> | null | undefined): string | null {
+  if (!details) {
+    return null;
+  }
+
+  return JSON.stringify(details);
+}
+
+function parseDetails(value: unknown): Record<string, unknown> | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = JSON.parse(String(value)) as unknown;
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : null;
+}
+
+function pruneNewestRows(
+  database: Database.Database,
+  tableName: "access_events" | "workspace_events",
+  retain: number
+): void {
+  database
+    .prepare(
+      `delete from ${tableName}
+       where rowid in (
+         select rowid
+         from ${tableName}
+         order by occurred_at desc, rowid desc
+         limit -1 offset ?
+       )`
+    )
+    .run(retain);
 }

@@ -4,8 +4,8 @@ workstream: 03
 language: en-US
 audience: agent
 doc_type: workstream
-status: draft
-owner: unassigned
+status: implemented
+owner: worker-03-history
 depends_on:
   - 01
 updated: 2026-05-04
@@ -50,3 +50,28 @@ Persist and display both security access history and workspace usage history.
 - Workspace usage history includes workspace-open and host-load events.
 - Each history list defaults to a 50-row page and retains the newest 3,000 rows.
 - History contains useful metadata without storing secrets.
+
+## Implementation Evidence
+
+- Added `access_events` and `workspace_events` persistence with newest-3,000
+  pruning and fixed 50-row default API responses.
+- Added authenticated `GET /api/admin/history/access` and
+  `GET /api/admin/history/workspace` APIs.
+- Added an authenticated `/admin/history` page that loads recent access and
+  workspace events.
+- Recorded access events for enrollment start/success, login success/failure,
+  logout, authenticated reset, emergency reset, and local auth bypass.
+- Recorded workspace events for `workspace_opened` and `host_profile_loaded`.
+- Did not implement host-open or project-open events.
+
+## TDD Evidence
+
+- Red: `npm test -- --run auth` failed with `404` for
+  `/api/admin/history/access` before history APIs existed.
+- Green: `npm test -- --run auth` passed after adding persistence, event
+  writers, APIs, and retention behavior.
+- Broader validation:
+  - `npm test -- --run admin-ui`
+  - `npm test -- --run hosts-api`
+  - `npm test -- --run workspace-serving`
+  - `npm run build`
