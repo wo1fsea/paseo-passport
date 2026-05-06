@@ -1,5 +1,5 @@
 diff --git a/packages/app/src/components/browser-pane.web.tsx b/packages/app/src/components/browser-pane.web.tsx
-index f87cdb45..885fd3ab 100644
+index f87cdb45..f2546573 100644
 --- a/packages/app/src/components/browser-pane.web.tsx
 +++ b/packages/app/src/components/browser-pane.web.tsx
 @@ -1,6 +1,7 @@
@@ -7,28 +7,29 @@ index f87cdb45..885fd3ab 100644
 +import { createElement, useMemo, type CSSProperties } from "react";
  import { Text, View } from "react-native";
  import { StyleSheet, useUnistyles } from "react-native-unistyles";
-+import { getBrowserRecord } from "@/stores/browser-store";
++import { useBrowserStore } from "@/stores/browser-store";
  
  interface BrowserPaneProps {
    browserId: string;
-@@ -13,6 +14,8 @@ interface BrowserPaneProps {
+@@ -13,6 +14,9 @@ interface BrowserPaneProps {
  
  export function BrowserPane({ browserId }: BrowserPaneProps) {
    const { theme } = useUnistyles();
-+  const browser = getBrowserRecord(browserId);
++  const browser = useBrowserStore((state) => state.browsersById[browserId] ?? null);
 +  const url = browser?.url ?? null;
++  const dispatchDashboardUrl = getDispatchDashboardUrl(url);
    const titleStyle = useMemo(
      () => [styles.title, { color: theme.colors.foreground }],
      [theme.colors.foreground],
-@@ -22,8 +25,20 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
+@@ -22,8 +26,20 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
      [theme.colors.foregroundMuted],
    );
  
-+  if (url?.startsWith("/dispatch-dashboard/")) {
++  if (dispatchDashboardUrl) {
 +    return (
 +      <View style={styles.frameContainer}>
 +        {createElement("iframe", {
-+          src: url,
++          src: dispatchDashboardUrl,
 +          title: browser?.title || "Dispatch Dashboard",
 +          style: iframeStyle,
 +        })}
@@ -42,10 +43,23 @@ index f87cdb45..885fd3ab 100644
        <Text style={titleStyle}>Browser is desktop-only</Text>
        <Text style={subtitleStyle}>
          Open this workspace in Electron to use the built-in browser.
-@@ -33,8 +48,18 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
+@@ -33,8 +49,31 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
    );
  }
  
++function getDispatchDashboardUrl(value: string | null): string | null {
++  if (!value) {
++    return null;
++  }
++  if (value.startsWith("/dispatch-dashboard/")) {
++    return value;
++  }
++  if (value.startsWith("https:///dispatch-dashboard/")) {
++    return value.slice("https://".length);
++  }
++  return null;
++}
++
 +const iframeStyle: CSSProperties = {
 +  border: "0",
 +  height: "100%",

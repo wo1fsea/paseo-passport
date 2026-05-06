@@ -101,6 +101,11 @@ submodule version.
   and renders those URLs inside the Web browser pane with an iframe. Verified
   locally on Passport `127.0.0.1:17318` with screenshot evidence at
   `.out/screenshots/rfc-0004-dashboard-workspace-tab.png`.
+- 2026-05-06: interactive-codex fixed persisted Web browser tabs that could
+  still render `Browser is desktop-only` after reload because the Web browser
+  pane read browser records without subscribing to store hydration. The patch
+  now subscribes to the browser store and recovers legacy dashboard tab URLs
+  normalized by the previous bundle as `https:///dispatch-dashboard/...`.
 
 ## Spec Handoff
 
