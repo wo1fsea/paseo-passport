@@ -8,6 +8,8 @@ doc_type: normative
 
 ## When To Write A Spec
 
+Run `docs/governance/spec-decision-gate.md` before any task that may change code.
+
 Write a spec before implementation when at least one is true:
 
 - Behavior is ambiguous or user-visible.
@@ -16,7 +18,9 @@ Write a spec before implementation when at least one is true:
 - A coding agent needs stable product intent before implementation.
 - Reviewers need to approve direction before code churn begins.
 
-Use `docs/governance/compact-specs.md` for bug fixes and small behavior tweaks. Skip full specs only for direct implementation exceptions: purely mechanical changes with no behavior, contract, data, UI, test, or governance effect.
+Use `docs/governance/compact-specs.md` for bug fixes and small behavior tweaks. Skip full specs only for direct implementation exceptions: purely mechanical changes with no behavior, contract, data, UI, configuration, permissions, security, test, docs, or governance impact.
+
+Before implementation, run the Parallelization Gate. Prefer independent workstreams and implementation agents for non-trivial specs. Use one serial workstream only when the task is atomic, highly conflict-prone, blocked on unresolved shared contracts, an explicit tiny or emergency exception, or cheaper to complete directly than to coordinate.
 
 ## Required Files
 

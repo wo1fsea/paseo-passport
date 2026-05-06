@@ -26,6 +26,8 @@ Keep this file short. Put detailed rules in `docs/governance/` and use this file
 | Code structure, interfaces, dead code, dependencies, or compatibility layers | `docs/governance/code-quality.md` |
 | README, docs, examples, generated docs, specs, contributor guidance, or agent instructions | `docs/governance/documentation-standards.md` |
 | Screenshots, recordings, traces, logs, reports, debug dumps, or scratch files | `docs/governance/temp-artifacts.md` |
+| Any task that may change code | `docs/governance/spec-decision-gate.md` |
+| Upstream Paseo web, workspace tabs, Passport-hosted app integration, or Dispatch Engine dashboard visibility | `docs/governance/paseo-upstream-integration.md` |
 | Bug fixes, small behavior tweaks, or direct implementation exceptions | `docs/governance/compact-specs.md` |
 | Spec-first project delivery, implementation handoff, or main-session acceptance | `docs/governance/spec-first-delivery.md` |
 | Ambiguous feature or cross-module change | `docs/governance/spec-workflow.md` |
@@ -48,7 +50,10 @@ Keep this file short. Put detailed rules in `docs/governance/` and use this file
 - New or substantially changed durable docs must declare `language`, `audience`, and `doc_type` near the top.
 - Agent-facing docs use English by default unless a local exception is explicit.
 - Do not duplicate long-lived documentation; keep one source of truth and route to it.
-- Bug fixes and small tweaks use compact specs unless the change is purely mechanical with no behavior, contract, data, UI, test, or governance impact.
+- Run a Spec Decision Gate before any task that may change code.
+- Upstream Paseo, Passport integration, workspace tab, and Dispatch Engine dashboard changes follow `docs/governance/paseo-upstream-integration.md`.
+- Bug fixes and small tweaks use compact specs unless the change is purely mechanical with no behavior, contract, data, UI, configuration, permissions, security, test, docs, or governance impact.
+- Run a Parallelization Gate before spec implementation; prefer independent workstreams and record serial exceptions.
 - Subagents or worker sessions implement spec work; the main session accepts it.
 - Do not skip tests or validation silently. Record what ran and what did not.
 - Do not preserve dead code, stale flags, or compatibility paths without an owner and deletion condition.

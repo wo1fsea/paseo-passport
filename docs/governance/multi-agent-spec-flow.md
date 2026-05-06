@@ -17,6 +17,27 @@ Agent = claims and updates one workstream
 Integrator = coordinates conflicts, merge order, and final validation
 ```
 
+Use one `01-implementation.md` workstream only when the task is atomic, highly conflict-prone, blocked on unresolved shared contracts, an explicit tiny or emergency exception, or cheaper to complete directly than to coordinate. Otherwise, split by ownership or dependency boundary before implementation.
+
+## Parallelization Gate
+
+Before agents claim work, the main session records:
+
+```markdown
+## Parallelization Gate
+
+- Can run in parallel: yes/no
+- Reason:
+- Shared contract needed first: yes/no
+- Workstream split:
+- Sequential dependencies:
+- Conflict risk:
+- Implementation agents to launch:
+- Main-session acceptance checks:
+```
+
+If the gate says `no`, keep one workstream and record the serial exception. If the gate says `yes`, each workstream needs clear scope, owned files or modules, dependencies, validation expectations, and handoff notes.
+
 ## Workstream Status Machine
 
 ```text

@@ -14,6 +14,7 @@ doc_type: normative
 - Check `docs/governance/code-quality.md` for structural code-quality issues.
 - Check `docs/governance/documentation-standards.md` when docs, examples, generated docs, specs, contributor guidance, or agent instructions changed.
 - Check `docs/governance/temp-artifacts.md` when temporary outputs were produced.
+- Check `docs/governance/spec-decision-gate.md` for code-changing work.
 - Check `docs/governance/spec-first-delivery.md` when implementation was delegated to subagents or worker sessions.
 - Include validation evidence.
 - Call out risks, migrations, and follow-ups.

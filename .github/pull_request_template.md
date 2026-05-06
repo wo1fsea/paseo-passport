@@ -9,6 +9,7 @@ doc_type: template
 
 ## Spec
 
+- Spec Decision Gate:
 - Spec:
 - Compact spec or direct exception:
 - Spec-first workflow used:

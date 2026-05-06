@@ -6,7 +6,9 @@ doc_type: normative
 
 # Spec-First Delivery
 
-Project delivery is spec first by default. The main session owns intent, coordination, and acceptance. Subagents or worker sessions implement claimed workstreams and hand back evidence. Tiny mechanical changes and emergency fixes may use direct implementation only when the exception is explicitly recorded.
+Project delivery is spec first by default. The main session owns intent, coordination, and acceptance. Implementation is parallel-first: before work starts, the main session must run a Parallelization Gate and prefer independent workstreams delegated to subagents or worker sessions. Tiny mechanical changes and emergency fixes may use direct implementation only when the exception is explicitly recorded.
+
+Run `docs/governance/spec-decision-gate.md` before this workflow to decide whether the task needs a new spec, an existing spec update, a compact spec, or a direct implementation exception.
 
 Use `docs/governance/compact-specs.md` for bug fixes and small tweaks that need a thin spec rather than a full feature spec.
 
@@ -14,14 +16,35 @@ Use `docs/governance/compact-specs.md` for bug fixes and small tweaks that need 
 
 ```text
 main session intake
+-> Spec Decision Gate
 -> PRODUCT.md
 -> TECH.md
+-> Parallelization Gate
 -> STATUS.md and workstreams
 -> subagent implementation
 -> subagent validation and handoff
 -> main session acceptance
 -> review or done
 ```
+
+## Parallelization Gate
+
+Before implementation starts, record this gate in `STATUS.md`. The handoff may repeat the relevant decision, but it does not replace the status record:
+
+```markdown
+## Parallelization Gate
+
+- Can run in parallel: yes/no
+- Reason:
+- Shared contract needed first: yes/no
+- Workstream split:
+- Sequential dependencies:
+- Conflict risk:
+- Implementation agents to launch:
+- Main-session acceptance checks:
+```
+
+Default to parallel workstreams for non-trivial specs. Use one serial workstream only when the scope is atomic, the same files would be edited by multiple agents, a shared contract must be resolved first, the change is a recorded direct-implementation exception, or coordination cost is higher than the work itself.
 
 ## Main Session
 
@@ -31,7 +54,8 @@ The main session acts as coordinator and acceptor:
 - Produce or revise the spec before implementation.
 - Confirm `PRODUCT.md` behavior and non-goals.
 - Confirm `TECH.md` is grounded in the current repo.
-- Split work into workstreams.
+- Run the Parallelization Gate and record why any serial path is acceptable.
+- Split work into independent workstreams with clear ownership, dependencies, and validation expectations.
 - Assign or launch subagents/worker sessions when implementation starts.
 - Review changed files and workstream evidence.
 - Run broad validation or verify that it was run.
@@ -60,6 +84,7 @@ Implementation cannot start until the spec has:
 - `PRODUCT.md` with observable behavior and non-goals.
 - `TECH.md` with current code context, proposed change shape, risks, and validation plan.
 - `STATUS.md` with `status: ready` or an explicitly accepted `active` state.
+- A recorded Parallelization Gate.
 - At least one workstream with owner, scope, dependencies, and validation expectations.
 - A main-session handoff note naming the worker/subagent scope.
 
@@ -110,6 +135,6 @@ Implementation cannot start until the spec has:
 
 ## Exceptions
 
-Direct main-session implementation is allowed only for emergency fixes, unavailable subagent tooling with an explicit note, or tiny mechanical changes with no behavior, contract, or governance effect. Even then, run a separate acceptance pass before marking work complete.
+Direct main-session implementation is allowed only for emergency fixes, unavailable subagent tooling with an explicit note, or tiny mechanical changes with no behavior, contract, data, UI, configuration, permissions, security, test, docs, or governance impact. Even then, run a separate acceptance pass before marking work complete.
 
-Bug fixes and small tweaks are not direct-implementation exceptions by default. If they affect behavior, contracts, UI, data, configuration, permissions, tests, or governance, create a compact spec.
+Bug fixes and small tweaks are not direct-implementation exceptions by default. If they affect behavior, contracts, UI, data, configuration, permissions, security, tests, docs, or governance, create a compact spec.

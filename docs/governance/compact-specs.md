@@ -6,13 +6,13 @@ doc_type: normative
 
 # Compact Specs
 
-Use compact specs for bug fixes and small behavior tweaks. They keep spec-first delivery lightweight while preserving intent, boundaries, and validation evidence.
+Use compact specs when the Spec Decision Gate classifies a bug fix or small behavior tweak as too small for a full feature spec but too meaningful for direct implementation.
 
 ## Rule
 
-Bug fixes and small tweaks still use spec-first when they affect behavior, contracts, UI, data, configuration, permissions, tests, or governance.
+Bug fixes and small tweaks still use spec-first when they affect behavior, contracts, UI, data, configuration, permissions, security, tests, docs, or governance.
 
-Use a direct implementation exception only for purely mechanical changes with no behavior, contract, data, UI, test, or governance effect.
+Use a direct implementation exception only for purely mechanical changes with no behavior, contract, data, UI, configuration, permissions, security, test, docs, or governance impact.
 
 ## Shape
 
@@ -138,7 +138,7 @@ New narrow behavior.
 
 ## Direct Implementation Exception
 
-Do not create a full spec only when the change is purely mechanical. Record the exception in the handoff, PR, or implementation log:
+Use a direct implementation exception only when the change is purely mechanical. Record the exception in the handoff, PR, or implementation log before editing:
 
 ```markdown
 ## Direct Implementation Exception
@@ -146,7 +146,7 @@ Do not create a full spec only when the change is purely mechanical. Record the 
 - Reason: tiny mechanical change
 - Behavior impact: none
 - Contract impact: none
-- Data/UI/test/governance impact: none
+- Data/UI/config/permissions/security/test/docs/governance impact: none
 - Files:
 - Validation:
 - Main-session acceptance:

@@ -23,11 +23,47 @@ specs/<spec-id>/
     01-implementation.md
 ```
 
-`STATUS.md` is the global board. It records the overall lifecycle, implementation progress, validation progress, and a summary table of workstreams.
+`STATUS.md` is the global board. It records the overall lifecycle, the Spec Decision Gate, the Parallelization Gate, implementation progress, validation progress, and a summary table of workstreams.
 
 `workstreams/*.md` files are the concurrency unit. Agents should primarily update their own workstream file and synchronize only their row in `STATUS.md`.
 
 Use `docs/governance/multi-agent-spec-flow.md` when multiple agents or branches implement the same spec in parallel.
+
+## Spec Decision Gate
+
+When a spec exists or is being created, `STATUS.md` should record the decision that made code-changing work eligible to proceed:
+
+```markdown
+## Spec Decision Gate
+
+- Request:
+- Code change expected: yes/no
+- Existing spec:
+- Decision: new-full-spec / update-existing-spec / compact-spec / direct-exception / no-code-change
+- Reason:
+- Behavior, contract, data, UI, configuration, permissions, security, test, docs, or governance impact:
+- Next workflow:
+- Recorded in:
+```
+
+## Parallelization Gate
+
+Before any workstream is claimed, `STATUS.md` should record:
+
+```markdown
+## Parallelization Gate
+
+- Can run in parallel: yes/no
+- Reason:
+- Shared contract needed first: yes/no
+- Workstream split:
+- Sequential dependencies:
+- Conflict risk:
+- Implementation agents to launch:
+- Main-session acceptance checks:
+```
+
+Default to `yes` for non-trivial specs. Record a serial exception when the task is atomic, highly conflict-prone, blocked on unresolved shared contracts, a tiny or emergency exception, or cheaper to complete directly than to coordinate.
 
 ## Overall Spec Status
 
