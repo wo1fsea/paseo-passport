@@ -140,10 +140,15 @@ entry point for an already-running Dispatch Engine dashboard:
 - Treat failed, unavailable, malformed, remote, or non-dashboard responses as
   no dashboard action.
 - Accept only same-origin dashboard paths rooted at `/dispatch-dashboard/`.
-- Show a compact desktop workspace tab-row action only when availability is
-  true and the app can open browser tabs.
+- Show a compact non-mobile workspace tab-row action only when availability is
+  true and the app can open the Dispatch Dashboard browser target.
 - Open the dashboard URL through the existing Paseo browser tab path instead
   of adding a new tab kind.
+- In self-hosted Web, keep generic ad hoc browser tabs hidden but allow this
+  controlled dashboard browser tab and render same-origin
+  `/dispatch-dashboard/...` URLs in the Web browser pane with an iframe.
+- Preserve same-origin `/dispatch-dashboard/...` URLs in Paseo's browser store
+  instead of normalizing them to an external `https://...` URL.
 - Keep the dashboard as a read-only observer; mutating Dispatch Engine
   controls are out of scope for rfc-0004.
 

@@ -1,3 +1,67 @@
+diff --git a/packages/app/src/components/browser-pane.web.tsx b/packages/app/src/components/browser-pane.web.tsx
+index f87cdb45..885fd3ab 100644
+--- a/packages/app/src/components/browser-pane.web.tsx
++++ b/packages/app/src/components/browser-pane.web.tsx
+@@ -1,6 +1,7 @@
+-import { useMemo } from "react";
++import { createElement, useMemo, type CSSProperties } from "react";
+ import { Text, View } from "react-native";
+ import { StyleSheet, useUnistyles } from "react-native-unistyles";
++import { getBrowserRecord } from "@/stores/browser-store";
+ 
+ interface BrowserPaneProps {
+   browserId: string;
+@@ -13,6 +14,8 @@ interface BrowserPaneProps {
+ 
+ export function BrowserPane({ browserId }: BrowserPaneProps) {
+   const { theme } = useUnistyles();
++  const browser = getBrowserRecord(browserId);
++  const url = browser?.url ?? null;
+   const titleStyle = useMemo(
+     () => [styles.title, { color: theme.colors.foreground }],
+     [theme.colors.foreground],
+@@ -22,8 +25,20 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
+     [theme.colors.foregroundMuted],
+   );
+ 
++  if (url?.startsWith("/dispatch-dashboard/")) {
++    return (
++      <View style={styles.frameContainer}>
++        {createElement("iframe", {
++          src: url,
++          title: browser?.title || "Dispatch Dashboard",
++          style: iframeStyle,
++        })}
++      </View>
++    );
++  }
++
+   return (
+-    <View style={styles.container}>
++    <View style={styles.unsupportedContainer}>
+       <Text style={titleStyle}>Browser is desktop-only</Text>
+       <Text style={subtitleStyle}>
+         Open this workspace in Electron to use the built-in browser.
+@@ -33,8 +48,18 @@ export function BrowserPane({ browserId }: BrowserPaneProps) {
+   );
+ }
+ 
++const iframeStyle: CSSProperties = {
++  border: "0",
++  height: "100%",
++  width: "100%",
++};
++
+ const styles = StyleSheet.create(() => ({
+-  container: {
++  frameContainer: {
++    flex: 1,
++    minHeight: 0,
++  },
++  unsupportedContainer: {
+     flex: 1,
+     alignItems: "center",
+     justifyContent: "center",
 diff --git a/packages/app/src/components/split-container.tsx b/packages/app/src/components/split-container.tsx
 index 68ce2992..9ae809d8 100644
 --- a/packages/app/src/components/split-container.tsx
@@ -74,371 +138,6 @@ index 68ce2992..9ae809d8 100644
            showCreateBrowserTab={showCreateBrowserTab}
            onReorderTabs={handleReorderTabs}
            onSplitRight={handleSplitRight}
-diff --git a/packages/app/src/runtime/passport-dispatch-dashboard.ts b/packages/app/src/runtime/passport-dispatch-dashboard.ts
-new file mode 100644
-index 00000000..d9d184d5
---- /dev/null
-+++ b/packages/app/src/runtime/passport-dispatch-dashboard.ts
-@@ -0,0 +1,75 @@
-+export type PassportDispatchDashboardAvailability =
-+  | {
-+      available: true;
-+      runId: string;
-+      url: string;
-+      label: string;
-+    }
-+  | {
-+      available: false;
-+      reason?: string;
-+    };
-+
-+interface FetchPassportDispatchDashboardAvailabilityInput {
-+  cwd: string | null | undefined;
-+  fetchImpl?: typeof fetch;
-+}
-+
-+function isRecord(value: unknown): value is Record<string, unknown> {
-+  return typeof value === "object" && value !== null;
-+}
-+
-+function isSafeSameOriginDashboardUrl(value: unknown): value is string {
-+  return (
-+    typeof value === "string" &&
-+    value.startsWith("/dispatch-dashboard/") &&
-+    !value.startsWith("//") &&
-+    !value.includes("://")
-+  );
-+}
-+
-+function normalizeDashboardAvailability(
-+  payload: unknown,
-+): PassportDispatchDashboardAvailability {
-+  if (!isRecord(payload) || payload.available !== true) {
-+    return { available: false };
-+  }
-+
-+  if (
-+    typeof payload.runId !== "string" ||
-+    !isSafeSameOriginDashboardUrl(payload.url) ||
-+    typeof payload.label !== "string"
-+  ) {
-+    return { available: false };
-+  }
-+
-+  return {
-+    available: true,
-+    runId: payload.runId,
-+    url: payload.url,
-+    label: payload.label,
-+  };
-+}
-+
-+export async function fetchPassportDispatchDashboardAvailability({
-+  cwd,
-+  fetchImpl = globalThis.fetch,
-+}: FetchPassportDispatchDashboardAvailabilityInput): Promise<PassportDispatchDashboardAvailability> {
-+  const trimmedCwd = typeof cwd === "string" ? cwd.trim() : "";
-+  if (!trimmedCwd || typeof fetchImpl !== "function") {
-+    return { available: false };
-+  }
-+
-+  try {
-+    const response = await fetchImpl(
-+      `/api/dispatch/dashboard/current?cwd=${encodeURIComponent(trimmedCwd)}`,
-+      { credentials: "include" },
-+    );
-+    if (!response.ok) {
-+      return { available: false };
-+    }
-+    return normalizeDashboardAvailability(await response.json());
-+  } catch {
-+    return { available: false };
-+  }
-+}
-diff --git a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx
-new file mode 100644
-index 00000000..2be2d09d
---- /dev/null
-+++ b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx
-@@ -0,0 +1,278 @@
-+/**
-+ * @vitest-environment jsdom
-+ */
-+import React from "react";
-+import { act, fireEvent } from "@testing-library/react";
-+import { createRoot, type Root } from "react-dom/client";
-+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-+import {
-+  WorkspaceDesktopTabsRow,
-+  type WorkspaceDesktopTabRowItem,
-+} from "@/screens/workspace/workspace-desktop-tabs-row";
-+
-+const { theme } = vi.hoisted(() => ({
-+  theme: {
-+    spacing: { 1: 4, 2: 8, 3: 12 },
-+    borderRadius: { full: 999, md: 6, sm: 4 },
-+    fontSize: { sm: 13, xs: 11 },
-+    fontWeight: { normal: "400" },
-+    colors: {
-+      accent: "#0a84ff",
-+      border: "#333",
-+      borderAccent: "#666",
-+      foreground: "#fff",
-+      foregroundMuted: "#aaa",
-+      surface0: "#111",
-+      surface2: "#222",
-+      surface3: "#333",
-+    },
-+  },
-+}));
-+
-+vi.mock("react-native-unistyles", () => ({
-+  StyleSheet: {
-+    create: (factory: unknown) => (typeof factory === "function" ? factory(theme) : factory),
-+  },
-+  withUnistyles:
-+    (Component: React.ComponentType<Record<string, unknown>>) =>
-+    ({ uniProps, ...rest }: { uniProps?: (theme: unknown) => object } & Record<string, unknown>) =>
-+      React.createElement(Component, { ...rest, ...(uniProps ? uniProps(theme) : {}) }),
-+}));
-+
-+vi.mock("@/constants/platform", () => ({
-+  isNative: false,
-+  isWeb: true,
-+}));
-+
-+vi.mock("@/constants/layout", () => ({
-+  WORKSPACE_SECONDARY_HEADER_HEIGHT: 40,
-+}));
-+
-+vi.mock("@/components/sortable-inline-list", () => ({
-+  SortableInlineList: ({
-+    data,
-+    renderItem,
-+  }: {
-+    data: WorkspaceDesktopTabRowItem[];
-+    renderItem: (input: {
-+      item: WorkspaceDesktopTabRowItem;
-+      index: number;
-+      isActive: boolean;
-+      dragHandleProps: undefined;
-+    }) => React.ReactNode;
-+  }) => (
-+    <div>
-+      {data.map((item, index) => (
-+        <React.Fragment key={item.tab.key}>
-+          {renderItem({ item, index, isActive: false, dragHandleProps: undefined })}
-+        </React.Fragment>
-+      ))}
-+    </div>
-+  ),
-+}));
-+
-+vi.mock("@/components/ui/context-menu", () => ({
-+  ContextMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-+  ContextMenuContent: ({ children, testID }: { children: React.ReactNode; testID?: string }) => (
-+    <div data-testid={testID}>{children}</div>
-+  ),
-+  ContextMenuItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-+  ContextMenuSeparator: () => <div role="separator" />,
-+  ContextMenuTrigger: ({
-+    children,
-+    testID,
-+  }: {
-+    children: React.ReactNode;
-+    testID?: string;
-+  }) => <button data-testid={testID}>{children}</button>,
-+}));
-+
-+vi.mock("@/components/ui/tooltip", () => ({
-+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-+  TooltipTrigger: ({
-+    accessibilityLabel,
-+    asChild,
-+    children,
-+    disabled,
-+    onPress,
-+    testID,
-+  }: {
-+    accessibilityLabel?: string;
-+    asChild?: boolean;
-+    children: React.ReactNode;
-+    disabled?: boolean;
-+    onPress?: () => void;
-+    testID?: string;
-+  }) =>
-+    asChild ? (
-+      <>{children}</>
-+    ) : (
-+      <button
-+        aria-label={accessibilityLabel}
-+        data-testid={testID}
-+        disabled={disabled}
-+        onClick={onPress}
-+        type="button"
-+      >
-+        {children}
-+      </button>
-+    ),
-+}));
-+
-+vi.mock("@/components/ui/shortcut", () => ({
-+  Shortcut: () => <span data-testid="shortcut" />,
-+}));
-+
-+vi.mock("@/hooks/use-shortcut-keys", () => ({
-+  useShortcutKeys: () => null,
-+}));
-+
-+vi.mock("@/screens/workspace/use-workspace-tab-layout", () => ({
-+  useWorkspaceTabLayout: ({ tabLabelLengths }: { tabLabelLengths: number[] }) => ({
-+    layout: {
-+      closeButtonPolicy: "all",
-+      items: tabLabelLengths.map(() => ({ width: 160, showLabel: true })),
-+      requiresHorizontalScrollFallback: false,
-+    },
-+  }),
-+}));
-+
-+vi.mock("@/screens/workspace/workspace-tab-presentation", () => ({
-+  WorkspaceTabIcon: () => <span data-testid="tab-icon" />,
-+  WorkspaceTabPresentationResolver: ({ children }: { children: (presentation: unknown) => React.ReactNode }) =>
-+    children({ label: "Agent tab", titleState: "ready" }),
-+}));
-+
-+vi.mock("@/screens/workspace/workspace-tab-menu", () => ({
-+  buildWorkspaceDesktopTabActions: () => ({
-+    closeButtonTestId: "close-tab",
-+    contextMenuTestId: "tab-menu",
-+    menuEntries: [],
-+  }),
-+}));
-+
-+vi.mock("lucide-react-native", () => {
-+  const createIcon = (name: string) => (props: Record<string, unknown>) =>
-+    React.createElement("span", {
-+      "data-icon": name,
-+      "data-size": props.size,
-+    });
-+  return {
-+    ArrowLeftToLine: createIcon("ArrowLeftToLine"),
-+    ArrowRightToLine: createIcon("ArrowRightToLine"),
-+    Columns2: createIcon("Columns2"),
-+    Copy: createIcon("Copy"),
-+    CopyX: createIcon("CopyX"),
-+    Gauge: createIcon("Gauge"),
-+    Globe: createIcon("Globe"),
-+    RotateCw: createIcon("RotateCw"),
-+    Rows2: createIcon("Rows2"),
-+    SquarePen: createIcon("SquarePen"),
-+    SquareTerminal: createIcon("SquareTerminal"),
-+    X: createIcon("X"),
-+  };
-+});
-+
-+const tabRowItems: WorkspaceDesktopTabRowItem[] = [
-+  {
-+    tab: {
-+      key: "agent-agent-a",
-+      tabId: "agent-agent-a",
-+      kind: "agent",
-+      target: { kind: "agent", agentId: "agent-a" },
-+    },
-+    isActive: true,
-+    isCloseHovered: false,
-+    isClosingTab: false,
-+  },
-+];
-+
-+function renderRow(
-+  props: Partial<React.ComponentProps<typeof WorkspaceDesktopTabsRow>> = {},
-+): HTMLElement {
-+  const container = document.createElement("div");
-+  document.body.appendChild(container);
-+  root = createRoot(container);
-+
-+  act(() => {
-+    root?.render(
-+      <WorkspaceDesktopTabsRow
-+        paneId="pane-1"
-+        tabs={tabRowItems}
-+        normalizedServerId="server-1"
-+        normalizedWorkspaceId="workspace-1"
-+        setHoveredTabKey={vi.fn()}
-+        setHoveredCloseTabKey={vi.fn()}
-+        onNavigateTab={vi.fn()}
-+        onCloseTab={vi.fn()}
-+        onCopyResumeCommand={vi.fn()}
-+        onCopyAgentId={vi.fn()}
-+        onReloadAgent={vi.fn()}
-+        onCloseTabsToLeft={vi.fn()}
-+        onCloseTabsToRight={vi.fn()}
-+        onCloseOtherTabs={vi.fn()}
-+        onCreateDraftTab={vi.fn()}
-+        onCreateTerminalTab={vi.fn()}
-+        onCreateBrowserTab={vi.fn()}
-+        onReorderTabs={vi.fn()}
-+        onSplitRight={vi.fn()}
-+        onSplitDown={vi.fn()}
-+        {...props}
-+      />,
-+    );
-+  });
-+
-+  return container;
-+}
-+
-+let root: Root | null = null;
-+
-+beforeEach(() => {
-+  vi.stubGlobal("React", React);
-+  root = null;
-+});
-+
-+afterEach(() => {
-+  if (root) {
-+    act(() => {
-+      root?.unmount();
-+    });
-+  }
-+  document.body.innerHTML = "";
-+  vi.unstubAllGlobals();
-+});
-+
-+describe("WorkspaceDesktopTabsRow Dispatch Dashboard action", () => {
-+  it("hides the Dispatch Dashboard action when availability is absent", () => {
-+    const container = renderRow({ dispatchDashboardAction: null });
-+
-+    expect(container.querySelector('[data-testid="workspace-open-dispatch-dashboard"]')).toBeNull();
-+  });
-+
-+  it("opens the available Dispatch Dashboard URL for the current pane", () => {
-+    const onOpenDispatchDashboard = vi.fn();
-+    const container = renderRow({
-+      dispatchDashboardAction: {
-+        label: "Dispatch Dashboard",
-+        url: "/dispatch-dashboard/20260506T081555540696Z/",
-+      },
-+      onOpenDispatchDashboard,
-+      showCreateBrowserTab: true,
-+    });
-+
-+    const action = container.querySelector(
-+      '[data-testid="workspace-open-dispatch-dashboard"]',
-+    ) as HTMLElement | null;
-+
-+    expect(action).not.toBeNull();
-+    expect(action?.getAttribute("aria-label")).toBe("Open Dispatch Dashboard");
-+
-+    fireEvent.click(action!);
-+
-+    expect(onOpenDispatchDashboard).toHaveBeenCalledWith({
-+      paneId: "pane-1",
-+      url: "/dispatch-dashboard/20260506T081555540696Z/",
-+    });
-+  });
-+});
 diff --git a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx
 index 5b75de7a..e0595d7f 100644
 --- a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx
@@ -516,93 +215,8 @@ index 5b75de7a..e0595d7f 100644
          {showPaneSplitActions ? (
            <>
              <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
-diff --git a/packages/app/src/screens/workspace/workspace-screen.test.tsx b/packages/app/src/screens/workspace/workspace-screen.test.tsx
-new file mode 100644
-index 00000000..2fb33a9a
---- /dev/null
-+++ b/packages/app/src/screens/workspace/workspace-screen.test.tsx
-@@ -0,0 +1,79 @@
-+import { describe, expect, it, vi } from "vitest";
-+import { readFileSync } from "node:fs";
-+import { fileURLToPath } from "node:url";
-+import {
-+  fetchPassportDispatchDashboardAvailability,
-+  type PassportDispatchDashboardAvailability,
-+} from "@/runtime/passport-dispatch-dashboard";
-+
-+const splitContainerSourcePath = fileURLToPath(
-+  new URL("../../components/split-container.tsx", import.meta.url),
-+);
-+const workspaceScreenSourcePath = fileURLToPath(new URL("./workspace-screen.tsx", import.meta.url));
-+
-+describe("Passport Dispatch Dashboard availability client", () => {
-+  it("queries the same-origin current-dashboard endpoint with an encoded cwd", async () => {
-+    const payload: PassportDispatchDashboardAvailability = {
-+      available: true,
-+      runId: "20260506T081555540696Z",
-+      url: "/dispatch-dashboard/20260506T081555540696Z/",
-+      label: "Dispatch Dashboard",
-+    };
-+    const fetchImpl = vi.fn(async () => ({
-+      ok: true,
-+      json: async () => payload,
-+    })) as unknown as typeof fetch;
-+
-+    await expect(
-+      fetchPassportDispatchDashboardAvailability({
-+        cwd: "/Users/example/Project With Spaces",
-+        fetchImpl,
-+      }),
-+    ).resolves.toEqual(payload);
-+
-+    expect(fetchImpl).toHaveBeenCalledWith(
-+      "/api/dispatch/dashboard/current?cwd=%2FUsers%2Fexample%2FProject%20With%20Spaces",
-+      { credentials: "include" },
-+    );
-+  });
-+
-+  it("fails closed when the availability request fails", async () => {
-+    const fetchImpl = vi.fn(async () => ({
-+      ok: false,
-+      json: async () => ({ available: true, url: "http://127.0.0.1:9876" }),
-+    })) as unknown as typeof fetch;
-+
-+    await expect(
-+      fetchPassportDispatchDashboardAvailability({
-+        cwd: "/Users/example/Project",
-+        fetchImpl,
-+      }),
-+    ).resolves.toEqual({ available: false });
-+  });
-+});
-+
-+describe("SplitContainer Dispatch Dashboard tab-row contract", () => {
-+  it("forwards dashboard action props into split-pane desktop tab rows", () => {
-+    const source = readFileSync(splitContainerSourcePath, "utf8");
-+    const splitPaneTabRowRender = source.match(
-+      /<WorkspaceDesktopTabsRow[\s\S]*?tabDropPreviewIndex=\{[\s\S]*?\}\s*\/>/,
-+    )?.[0];
-+
-+    expect(splitPaneTabRowRender).toContain("dispatchDashboardAction={dispatchDashboardAction}");
-+    expect(splitPaneTabRowRender).toContain(
-+      "onOpenDispatchDashboard={onOpenDispatchDashboard}",
-+    );
-+  });
-+
-+  it("receives dashboard action props from the workspace screen", () => {
-+    const source = readFileSync(workspaceScreenSourcePath, "utf8");
-+    const splitContainerRender = source.match(
-+      /<SplitContainer[\s\S]*?renderPaneEmptyState=\{renderSplitPaneEmptyState\}\s*\/>/,
-+    )?.[0];
-+
-+    expect(splitContainerRender).toContain("dispatchDashboardAction={dispatchDashboardAction}");
-+    expect(splitContainerRender).toContain(
-+      "onOpenDispatchDashboard={handleOpenDispatchDashboard}",
-+    );
-+  });
-+});
 diff --git a/packages/app/src/screens/workspace/workspace-screen.tsx b/packages/app/src/screens/workspace/workspace-screen.tsx
-index 38df733b..a59fae96 100644
+index 38df733b..043a0534 100644
 --- a/packages/app/src/screens/workspace/workspace-screen.tsx
 +++ b/packages/app/src/screens/workspace/workspace-screen.tsx
 @@ -106,6 +106,7 @@ import {
@@ -621,13 +235,22 @@ index 38df733b..a59fae96 100644
  const WORKSPACE_SETUP_AUTO_OPEN_WINDOW_MS = 30_000;
  const EMPTY_UI_TABS: WorkspaceTab[] = [];
  const EMPTY_PINNED_AGENT_IDS = new Set<string>();
+@@ -2165,7 +2167,7 @@ function WorkspaceScreenContent({
+ 
+   const handleOpenUrlInBrowserTab = useCallback(
+     (url: string) => {
+-      if (!persistenceKey || !getIsElectron()) {
++      if (!persistenceKey || (!getIsElectron() && !isWeb)) {
+         return;
+       }
+       const { browserId } = createWorkspaceBrowser({ initialUrl: url });
 @@ -3078,7 +3080,33 @@ function WorkspaceScreenContent({
      [createTerminalMutation.isPending, pendingTerminalCreateInput],
    );
    const showCreateBrowserTab = getIsElectron();
 +  const dispatchDashboardQuery = useQuery({
 +    queryKey: ["passport-dispatch-dashboard", workspaceDirectory] as const,
-+    enabled: Boolean(isRouteFocused && !isMobile && showCreateBrowserTab && workspaceDirectory),
++    enabled: Boolean(isRouteFocused && !isMobile && (showCreateBrowserTab || isWeb) && workspaceDirectory),
 +    queryFn: () => fetchPassportDispatchDashboardAvailability({ cwd: workspaceDirectory }),
 +    staleTime: DISPATCH_DASHBOARD_QUERY_STALE_TIME,
 +    refetchInterval: DISPATCH_DASHBOARD_QUERY_STALE_TIME,
@@ -682,3 +305,34 @@ index 38df733b..a59fae96 100644
                    showCreateBrowserTab={showCreateBrowserTab}
                    disableCreateTerminal={createTerminalMutation.isPending}
                    isWaitingOnTerminalReadiness={pendingTerminalCreateInput !== null}
+diff --git a/packages/app/src/stores/browser-store.test.ts b/packages/app/src/stores/browser-store.test.ts
+index d7d03965..41b573ea 100644
+--- a/packages/app/src/stores/browser-store.test.ts
++++ b/packages/app/src/stores/browser-store.test.ts
+@@ -23,6 +23,12 @@ describe("browser store", () => {
+     expect(normalizeWorkspaceBrowserUrl("//example.com/path")).toBe("https://example.com/path");
+   });
+ 
++  it("keeps same-origin dispatch dashboard paths unchanged", () => {
++    expect(normalizeWorkspaceBrowserUrl("/dispatch-dashboard/20260506T090158046825Z/")).toBe(
++      "/dispatch-dashboard/20260506T090158046825Z/",
++    );
++  });
++
+   it("keeps explicit protocols unchanged", () => {
+     expect(normalizeWorkspaceBrowserUrl("http://localhost:8081")).toBe("http://localhost:8081");
+     expect(normalizeWorkspaceBrowserUrl("https://localhost:8081")).toBe("https://localhost:8081");
+diff --git a/packages/app/src/stores/browser-store.ts b/packages/app/src/stores/browser-store.ts
+index e18d359c..3f1362ac 100644
+--- a/packages/app/src/stores/browser-store.ts
++++ b/packages/app/src/stores/browser-store.ts
+@@ -36,6 +36,9 @@ function normalizeBrowserUrl(value: string | null | undefined): string {
+   if (!trimmed) {
+     return "https://example.com";
+   }
++  if (trimmed.startsWith("/dispatch-dashboard/")) {
++    return trimmed;
++  }
+   if (/^(localhost|\d{1,3}(?:\.\d{1,3}){3}|\[[\da-fA-F:.]+])(?::\d+)?(?:[/?#]|$)/.test(trimmed)) {
+     return `http://${trimmed}`;
+   }

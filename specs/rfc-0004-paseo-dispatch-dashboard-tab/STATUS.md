@@ -94,6 +94,13 @@ submodule version.
   `npx tsx scripts/apply-paseo-patch.ts`, upstream `@getpaseo/app` workspace
   tests, and browser screenshot evidence at
   `.out/screenshots/rfc-0004-dashboard-proxy-acceptance.png`.
+- 2026-05-06: interactive-codex fixed the self-hosted Web workspace path after
+  live local acceptance showed the Dispatch Dashboard action was still gated to
+  Electron browser tabs. The patch now allows the Dispatch Dashboard action on
+  Web workspaces, preserves same-origin `/dispatch-dashboard/...` browser URLs,
+  and renders those URLs inside the Web browser pane with an iframe. Verified
+  locally on Passport `127.0.0.1:17318` with screenshot evidence at
+  `.out/screenshots/rfc-0004-dashboard-workspace-tab.png`.
 
 ## Spec Handoff
 
