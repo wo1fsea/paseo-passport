@@ -70,6 +70,6 @@ function applyPassportPatch(): void {
   });
 
   if (result.status !== 0) {
-    throw new Error("Failed to apply Passport host registry patch to upstream Paseo.");
+    throw new Error("Failed to apply Paseo Passport upstream patches.");
   }
 }

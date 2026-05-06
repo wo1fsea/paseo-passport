@@ -2,7 +2,7 @@
 language: en-US
 audience: developer
 doc_type: provenance
-updated: 2026-05-04
+updated: 2026-05-06
 ---
 
 # Upstream Paseo
@@ -36,6 +36,7 @@ vendor/
   paseo/                 # git submodule pinned to v0.1.67
 patches/
   paseo-web-passport-hosts.patch
+  paseo-web-dispatch-dashboard-tab.patch
 scripts/
   apply-paseo-patch.ts
   build-paseo-web.ts
@@ -60,9 +61,9 @@ npm run build:paseo-web
 ```
 
 It verifies that `vendor/paseo` is checked out at `v0.1.67`
-(`15a2e3bdcbefda97587f74e499d6b81a278d458c`), applies
-`patches/paseo-web-passport-hosts.patch` when needed, runs the upstream web
-build, and copies `vendor/paseo/packages/app/dist` into
+(`15a2e3bdcbefda97587f74e499d6b81a278d458c`), applies the reproducible
+Passport patches in `patches/` when needed, runs the upstream web build, and
+copies `vendor/paseo/packages/app/dist` into
 `apps/passport-server/public/`. The copied public output includes
 `upstream-paseo-LICENSE.txt` from the upstream repository.
 
@@ -92,7 +93,20 @@ is based on the pinned `v0.1.67` commit
 
 ## Patch Contract
 
-The MVP patch must only change the web host registry load path:
+Paseo Passport keeps upstream web changes as parent-repo patches and does not
+advance the pinned `vendor/paseo` submodule commit for these integrations.
+`scripts/apply-paseo-patch.ts` verifies the pinned release commit and applies
+these patches in order:
+
+1. `patches/paseo-web-passport-hosts.patch`
+2. `patches/paseo-web-dispatch-dashboard-tab.patch`
+
+The patch script is idempotent: it applies any missing patch and exits
+successfully when a patch is already present.
+
+### Passport Host Registry
+
+The host-registry patch must only change the web host registry load path:
 
 - Fetch `/api/passport/hosts` with `credentials: "include"`.
 - Treat `401` as no Passport hosts.
@@ -115,6 +129,30 @@ integration: add a `loadPassportHostProfiles()` helper, fetch
 normalize returned profiles through `normalizeStoredHostProfile()`, and merge
 the returned `HostProfile[]` after the existing local host registry load.
 
+### Dispatch Dashboard Tab
+
+The Dispatch Dashboard tab patch must only add the self-hosted Paseo workspace
+entry point for an already-running Dispatch Engine dashboard:
+
+- Query Passport same-origin
+  `/api/dispatch/dashboard/current?cwd=<encoded-workspace-directory>` with
+  `credentials: "include"` from the workspace screen.
+- Treat failed, unavailable, malformed, remote, or non-dashboard responses as
+  no dashboard action.
+- Accept only same-origin dashboard paths rooted at `/dispatch-dashboard/`.
+- Show a compact desktop workspace tab-row action only when availability is
+  true and the app can open browser tabs.
+- Open the dashboard URL through the existing Paseo browser tab path instead
+  of adding a new tab kind.
+- Keep the dashboard as a read-only observer; mutating Dispatch Engine
+  controls are out of scope for rfc-0004.
+
+The reproducible patch lives at
+`patches/paseo-web-dispatch-dashboard-tab.patch`. It records the upstream
+Paseo UI and client helper changes from rfc-0004 workstream 02 and leaves the
+submodule pinned at `v0.1.67`
+(`15a2e3bdcbefda97587f74e499d6b81a278d458c`).
+
 When `vendor/paseo` is present at the confirmed commit, the patch can be
 checked/applied directly with:
 
@@ -122,10 +160,9 @@ checked/applied directly with:
 npx tsx scripts/apply-paseo-patch.ts
 ```
 
-The patch script is idempotent: it applies the patch when missing and exits
-successfully when the patch is already present. `npm run build:paseo-web` calls
-the patch script before building so a clean clone can reproduce the Passport
-host-registry build output.
+`npm run build:paseo-web` calls the patch script before building so a clean
+clone can reproduce the Passport host-registry and Dispatch Dashboard tab build
+output.
 
 Workstream 04 replaced the earlier local Passport workspace shell with the
 copied upstream web build. Workstream 05 applied and validated the
@@ -135,6 +172,12 @@ Validated on 2026-05-04:
 
 - `npm run test --workspace=@getpaseo/app -- host-runtime` from
   `vendor/paseo`.
+- `npx tsx scripts/apply-paseo-patch.ts`.
+- `npm run build:paseo-web`.
+- `npm run build`.
+
+Validated for rfc-0004 workstream 03 on 2026-05-06:
+
 - `npx tsx scripts/apply-paseo-patch.ts`.
 - `npm run build:paseo-web`.
 - `npm run build`.

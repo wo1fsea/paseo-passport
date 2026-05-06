@@ -1,0 +1,684 @@
+diff --git a/packages/app/src/components/split-container.tsx b/packages/app/src/components/split-container.tsx
+index 68ce2992..9ae809d8 100644
+--- a/packages/app/src/components/split-container.tsx
++++ b/packages/app/src/components/split-container.tsx
+@@ -92,6 +92,8 @@ interface SplitContainerProps {
+   onCreateDraftTab: (input: { paneId?: string }) => void;
+   onCreateTerminalTab: (input: { paneId?: string }) => void;
+   onCreateBrowserTab: (input: { paneId?: string }) => void;
++  dispatchDashboardAction?: { label: string; url: string } | null;
++  onOpenDispatchDashboard?: (input: { paneId?: string; url: string }) => void;
+   showCreateBrowserTab?: boolean;
+   buildPaneContentModel: (input: {
+     paneId: string;
+@@ -348,6 +350,8 @@ export function SplitContainer({
+   onCreateDraftTab,
+   onCreateTerminalTab,
+   onCreateBrowserTab,
++  dispatchDashboardAction,
++  onOpenDispatchDashboard,
+   showCreateBrowserTab,
+   buildPaneContentModel,
+   onFocusPane,
+@@ -568,6 +572,8 @@ export function SplitContainer({
+         onCreateDraftTab={onCreateDraftTab}
+         onCreateTerminalTab={onCreateTerminalTab}
+         onCreateBrowserTab={onCreateBrowserTab}
++        dispatchDashboardAction={dispatchDashboardAction}
++        onOpenDispatchDashboard={onOpenDispatchDashboard}
+         showCreateBrowserTab={showCreateBrowserTab}
+         buildPaneContentModel={buildPaneContentModel}
+         onFocusPane={onFocusPane}
+@@ -707,6 +713,8 @@ function SplitNodeView({
+   onCreateDraftTab,
+   onCreateTerminalTab,
+   onCreateBrowserTab,
++  dispatchDashboardAction,
++  onOpenDispatchDashboard,
+   showCreateBrowserTab,
+   buildPaneContentModel,
+   onFocusPane,
+@@ -759,6 +767,8 @@ function SplitNodeView({
+         onCreateDraftTab={onCreateDraftTab}
+         onCreateTerminalTab={onCreateTerminalTab}
+         onCreateBrowserTab={onCreateBrowserTab}
++        dispatchDashboardAction={dispatchDashboardAction}
++        onOpenDispatchDashboard={onOpenDispatchDashboard}
+         showCreateBrowserTab={showCreateBrowserTab}
+         buildPaneContentModel={buildPaneContentModel}
+         onFocusPane={onFocusPane}
+@@ -804,6 +814,8 @@ function SplitNodeView({
+               onCreateDraftTab={onCreateDraftTab}
+               onCreateTerminalTab={onCreateTerminalTab}
+               onCreateBrowserTab={onCreateBrowserTab}
++              dispatchDashboardAction={dispatchDashboardAction}
++              onOpenDispatchDashboard={onOpenDispatchDashboard}
+               showCreateBrowserTab={showCreateBrowserTab}
+               buildPaneContentModel={buildPaneContentModel}
+               onFocusPane={onFocusPane}
+@@ -855,6 +867,8 @@ function SplitPaneView({
+   onCreateDraftTab,
+   onCreateTerminalTab,
+   onCreateBrowserTab,
++  dispatchDashboardAction,
++  onOpenDispatchDashboard,
+   showCreateBrowserTab,
+   buildPaneContentModel,
+   onFocusPane,
+@@ -998,6 +1012,8 @@ function SplitPaneView({
+           onCreateDraftTab={onCreateDraftTab}
+           onCreateTerminalTab={onCreateTerminalTab}
+           onCreateBrowserTab={onCreateBrowserTab}
++          dispatchDashboardAction={dispatchDashboardAction}
++          onOpenDispatchDashboard={onOpenDispatchDashboard}
+           showCreateBrowserTab={showCreateBrowserTab}
+           onReorderTabs={handleReorderTabs}
+           onSplitRight={handleSplitRight}
+diff --git a/packages/app/src/runtime/passport-dispatch-dashboard.ts b/packages/app/src/runtime/passport-dispatch-dashboard.ts
+new file mode 100644
+index 00000000..d9d184d5
+--- /dev/null
++++ b/packages/app/src/runtime/passport-dispatch-dashboard.ts
+@@ -0,0 +1,75 @@
++export type PassportDispatchDashboardAvailability =
++  | {
++      available: true;
++      runId: string;
++      url: string;
++      label: string;
++    }
++  | {
++      available: false;
++      reason?: string;
++    };
++
++interface FetchPassportDispatchDashboardAvailabilityInput {
++  cwd: string | null | undefined;
++  fetchImpl?: typeof fetch;
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null;
++}
++
++function isSafeSameOriginDashboardUrl(value: unknown): value is string {
++  return (
++    typeof value === "string" &&
++    value.startsWith("/dispatch-dashboard/") &&
++    !value.startsWith("//") &&
++    !value.includes("://")
++  );
++}
++
++function normalizeDashboardAvailability(
++  payload: unknown,
++): PassportDispatchDashboardAvailability {
++  if (!isRecord(payload) || payload.available !== true) {
++    return { available: false };
++  }
++
++  if (
++    typeof payload.runId !== "string" ||
++    !isSafeSameOriginDashboardUrl(payload.url) ||
++    typeof payload.label !== "string"
++  ) {
++    return { available: false };
++  }
++
++  return {
++    available: true,
++    runId: payload.runId,
++    url: payload.url,
++    label: payload.label,
++  };
++}
++
++export async function fetchPassportDispatchDashboardAvailability({
++  cwd,
++  fetchImpl = globalThis.fetch,
++}: FetchPassportDispatchDashboardAvailabilityInput): Promise<PassportDispatchDashboardAvailability> {
++  const trimmedCwd = typeof cwd === "string" ? cwd.trim() : "";
++  if (!trimmedCwd || typeof fetchImpl !== "function") {
++    return { available: false };
++  }
++
++  try {
++    const response = await fetchImpl(
++      `/api/dispatch/dashboard/current?cwd=${encodeURIComponent(trimmedCwd)}`,
++      { credentials: "include" },
++    );
++    if (!response.ok) {
++      return { available: false };
++    }
++    return normalizeDashboardAvailability(await response.json());
++  } catch {
++    return { available: false };
++  }
++}
+diff --git a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx
+new file mode 100644
+index 00000000..2be2d09d
+--- /dev/null
++++ b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.test.tsx
+@@ -0,0 +1,278 @@
++/**
++ * @vitest-environment jsdom
++ */
++import React from "react";
++import { act, fireEvent } from "@testing-library/react";
++import { createRoot, type Root } from "react-dom/client";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import {
++  WorkspaceDesktopTabsRow,
++  type WorkspaceDesktopTabRowItem,
++} from "@/screens/workspace/workspace-desktop-tabs-row";
++
++const { theme } = vi.hoisted(() => ({
++  theme: {
++    spacing: { 1: 4, 2: 8, 3: 12 },
++    borderRadius: { full: 999, md: 6, sm: 4 },
++    fontSize: { sm: 13, xs: 11 },
++    fontWeight: { normal: "400" },
++    colors: {
++      accent: "#0a84ff",
++      border: "#333",
++      borderAccent: "#666",
++      foreground: "#fff",
++      foregroundMuted: "#aaa",
++      surface0: "#111",
++      surface2: "#222",
++      surface3: "#333",
++    },
++  },
++}));
++
++vi.mock("react-native-unistyles", () => ({
++  StyleSheet: {
++    create: (factory: unknown) => (typeof factory === "function" ? factory(theme) : factory),
++  },
++  withUnistyles:
++    (Component: React.ComponentType<Record<string, unknown>>) =>
++    ({ uniProps, ...rest }: { uniProps?: (theme: unknown) => object } & Record<string, unknown>) =>
++      React.createElement(Component, { ...rest, ...(uniProps ? uniProps(theme) : {}) }),
++}));
++
++vi.mock("@/constants/platform", () => ({
++  isNative: false,
++  isWeb: true,
++}));
++
++vi.mock("@/constants/layout", () => ({
++  WORKSPACE_SECONDARY_HEADER_HEIGHT: 40,
++}));
++
++vi.mock("@/components/sortable-inline-list", () => ({
++  SortableInlineList: ({
++    data,
++    renderItem,
++  }: {
++    data: WorkspaceDesktopTabRowItem[];
++    renderItem: (input: {
++      item: WorkspaceDesktopTabRowItem;
++      index: number;
++      isActive: boolean;
++      dragHandleProps: undefined;
++    }) => React.ReactNode;
++  }) => (
++    <div>
++      {data.map((item, index) => (
++        <React.Fragment key={item.tab.key}>
++          {renderItem({ item, index, isActive: false, dragHandleProps: undefined })}
++        </React.Fragment>
++      ))}
++    </div>
++  ),
++}));
++
++vi.mock("@/components/ui/context-menu", () => ({
++  ContextMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
++  ContextMenuContent: ({ children, testID }: { children: React.ReactNode; testID?: string }) => (
++    <div data-testid={testID}>{children}</div>
++  ),
++  ContextMenuItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
++  ContextMenuSeparator: () => <div role="separator" />,
++  ContextMenuTrigger: ({
++    children,
++    testID,
++  }: {
++    children: React.ReactNode;
++    testID?: string;
++  }) => <button data-testid={testID}>{children}</button>,
++}));
++
++vi.mock("@/components/ui/tooltip", () => ({
++  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
++  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
++  TooltipTrigger: ({
++    accessibilityLabel,
++    asChild,
++    children,
++    disabled,
++    onPress,
++    testID,
++  }: {
++    accessibilityLabel?: string;
++    asChild?: boolean;
++    children: React.ReactNode;
++    disabled?: boolean;
++    onPress?: () => void;
++    testID?: string;
++  }) =>
++    asChild ? (
++      <>{children}</>
++    ) : (
++      <button
++        aria-label={accessibilityLabel}
++        data-testid={testID}
++        disabled={disabled}
++        onClick={onPress}
++        type="button"
++      >
++        {children}
++      </button>
++    ),
++}));
++
++vi.mock("@/components/ui/shortcut", () => ({
++  Shortcut: () => <span data-testid="shortcut" />,
++}));
++
++vi.mock("@/hooks/use-shortcut-keys", () => ({
++  useShortcutKeys: () => null,
++}));
++
++vi.mock("@/screens/workspace/use-workspace-tab-layout", () => ({
++  useWorkspaceTabLayout: ({ tabLabelLengths }: { tabLabelLengths: number[] }) => ({
++    layout: {
++      closeButtonPolicy: "all",
++      items: tabLabelLengths.map(() => ({ width: 160, showLabel: true })),
++      requiresHorizontalScrollFallback: false,
++    },
++  }),
++}));
++
++vi.mock("@/screens/workspace/workspace-tab-presentation", () => ({
++  WorkspaceTabIcon: () => <span data-testid="tab-icon" />,
++  WorkspaceTabPresentationResolver: ({ children }: { children: (presentation: unknown) => React.ReactNode }) =>
++    children({ label: "Agent tab", titleState: "ready" }),
++}));
++
++vi.mock("@/screens/workspace/workspace-tab-menu", () => ({
++  buildWorkspaceDesktopTabActions: () => ({
++    closeButtonTestId: "close-tab",
++    contextMenuTestId: "tab-menu",
++    menuEntries: [],
++  }),
++}));
++
++vi.mock("lucide-react-native", () => {
++  const createIcon = (name: string) => (props: Record<string, unknown>) =>
++    React.createElement("span", {
++      "data-icon": name,
++      "data-size": props.size,
++    });
++  return {
++    ArrowLeftToLine: createIcon("ArrowLeftToLine"),
++    ArrowRightToLine: createIcon("ArrowRightToLine"),
++    Columns2: createIcon("Columns2"),
++    Copy: createIcon("Copy"),
++    CopyX: createIcon("CopyX"),
++    Gauge: createIcon("Gauge"),
++    Globe: createIcon("Globe"),
++    RotateCw: createIcon("RotateCw"),
++    Rows2: createIcon("Rows2"),
++    SquarePen: createIcon("SquarePen"),
++    SquareTerminal: createIcon("SquareTerminal"),
++    X: createIcon("X"),
++  };
++});
++
++const tabRowItems: WorkspaceDesktopTabRowItem[] = [
++  {
++    tab: {
++      key: "agent-agent-a",
++      tabId: "agent-agent-a",
++      kind: "agent",
++      target: { kind: "agent", agentId: "agent-a" },
++    },
++    isActive: true,
++    isCloseHovered: false,
++    isClosingTab: false,
++  },
++];
++
++function renderRow(
++  props: Partial<React.ComponentProps<typeof WorkspaceDesktopTabsRow>> = {},
++): HTMLElement {
++  const container = document.createElement("div");
++  document.body.appendChild(container);
++  root = createRoot(container);
++
++  act(() => {
++    root?.render(
++      <WorkspaceDesktopTabsRow
++        paneId="pane-1"
++        tabs={tabRowItems}
++        normalizedServerId="server-1"
++        normalizedWorkspaceId="workspace-1"
++        setHoveredTabKey={vi.fn()}
++        setHoveredCloseTabKey={vi.fn()}
++        onNavigateTab={vi.fn()}
++        onCloseTab={vi.fn()}
++        onCopyResumeCommand={vi.fn()}
++        onCopyAgentId={vi.fn()}
++        onReloadAgent={vi.fn()}
++        onCloseTabsToLeft={vi.fn()}
++        onCloseTabsToRight={vi.fn()}
++        onCloseOtherTabs={vi.fn()}
++        onCreateDraftTab={vi.fn()}
++        onCreateTerminalTab={vi.fn()}
++        onCreateBrowserTab={vi.fn()}
++        onReorderTabs={vi.fn()}
++        onSplitRight={vi.fn()}
++        onSplitDown={vi.fn()}
++        {...props}
++      />,
++    );
++  });
++
++  return container;
++}
++
++let root: Root | null = null;
++
++beforeEach(() => {
++  vi.stubGlobal("React", React);
++  root = null;
++});
++
++afterEach(() => {
++  if (root) {
++    act(() => {
++      root?.unmount();
++    });
++  }
++  document.body.innerHTML = "";
++  vi.unstubAllGlobals();
++});
++
++describe("WorkspaceDesktopTabsRow Dispatch Dashboard action", () => {
++  it("hides the Dispatch Dashboard action when availability is absent", () => {
++    const container = renderRow({ dispatchDashboardAction: null });
++
++    expect(container.querySelector('[data-testid="workspace-open-dispatch-dashboard"]')).toBeNull();
++  });
++
++  it("opens the available Dispatch Dashboard URL for the current pane", () => {
++    const onOpenDispatchDashboard = vi.fn();
++    const container = renderRow({
++      dispatchDashboardAction: {
++        label: "Dispatch Dashboard",
++        url: "/dispatch-dashboard/20260506T081555540696Z/",
++      },
++      onOpenDispatchDashboard,
++      showCreateBrowserTab: true,
++    });
++
++    const action = container.querySelector(
++      '[data-testid="workspace-open-dispatch-dashboard"]',
++    ) as HTMLElement | null;
++
++    expect(action).not.toBeNull();
++    expect(action?.getAttribute("aria-label")).toBe("Open Dispatch Dashboard");
++
++    fireEvent.click(action!);
++
++    expect(onOpenDispatchDashboard).toHaveBeenCalledWith({
++      paneId: "pane-1",
++      url: "/dispatch-dashboard/20260506T081555540696Z/",
++    });
++  });
++});
+diff --git a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx
+index 5b75de7a..e0595d7f 100644
+--- a/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx
++++ b/packages/app/src/screens/workspace/workspace-desktop-tabs-row.tsx
+@@ -22,6 +22,7 @@ import {
+   ArrowRightToLine,
+   Columns2,
+   Copy,
++  Gauge,
+   RotateCw,
+   Rows2,
+   Globe,
+@@ -74,6 +75,7 @@ const ThemedCopyX = withUnistyles(CopyX);
+ const ThemedSquarePen = withUnistyles(SquarePen);
+ const ThemedSquareTerminal = withUnistyles(SquareTerminal);
+ const ThemedGlobe = withUnistyles(Globe);
++const ThemedGauge = withUnistyles(Gauge);
+ const ThemedColumns2 = withUnistyles(Columns2);
+ const ThemedRows2 = withUnistyles(Rows2);
+ 
+@@ -156,6 +158,8 @@ interface WorkspaceDesktopTabsRowProps {
+   onCreateDraftTab: (input: { paneId?: string }) => void;
+   onCreateTerminalTab: (input: { paneId?: string }) => void;
+   onCreateBrowserTab: (input: { paneId?: string }) => void;
++  dispatchDashboardAction?: { label: string; url: string } | null;
++  onOpenDispatchDashboard?: (input: { paneId?: string; url: string }) => void;
+   showCreateBrowserTab?: boolean;
+   disableCreateTerminal?: boolean;
+   isWaitingOnTerminalReadiness?: boolean;
+@@ -473,6 +477,8 @@ export function WorkspaceDesktopTabsRow({
+   onCreateDraftTab,
+   onCreateTerminalTab,
+   onCreateBrowserTab,
++  dispatchDashboardAction = null,
++  onOpenDispatchDashboard,
+   showCreateBrowserTab = false,
+   disableCreateTerminal = false,
+   isWaitingOnTerminalReadiness = false,
+@@ -559,6 +565,13 @@ export function WorkspaceDesktopTabsRow({
+     onCreateBrowserTab({ paneId });
+   }, [onCreateBrowserTab, paneId]);
+ 
++  const handleOpenDispatchDashboard = useCallback(() => {
++    if (!dispatchDashboardAction) {
++      return;
++    }
++    onOpenDispatchDashboard?.({ paneId, url: dispatchDashboardAction.url });
++  }, [dispatchDashboardAction, onOpenDispatchDashboard, paneId]);
++
+   const terminalDisabled = disableCreateTerminal || isWaitingOnTerminalReadiness;
+   const newTerminalActionButtonStyle = useCallback(
+     ({ hovered, pressed }: PressableStateCallbackType) => [
+@@ -735,6 +748,24 @@ export function WorkspaceDesktopTabsRow({
+             </TooltipContent>
+           </Tooltip>
+         ) : null}
++        {dispatchDashboardAction ? (
++          <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
++            <TooltipTrigger
++              testID="workspace-open-dispatch-dashboard"
++              onPress={handleOpenDispatchDashboard}
++              accessibilityRole="button"
++              accessibilityLabel="Open Dispatch Dashboard"
++              style={newTabActionButtonStyle}
++            >
++              <ThemedGauge size={14} uniProps={mutedColorMapping} />
++            </TooltipTrigger>
++            <TooltipContent side="bottom" align="center" offset={8}>
++              <View style={styles.newTabTooltipRow}>
++                <Text style={styles.newTabTooltipText}>{dispatchDashboardAction.label}</Text>
++              </View>
++            </TooltipContent>
++          </Tooltip>
++        ) : null}
+         {showPaneSplitActions ? (
+           <>
+             <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
+diff --git a/packages/app/src/screens/workspace/workspace-screen.test.tsx b/packages/app/src/screens/workspace/workspace-screen.test.tsx
+new file mode 100644
+index 00000000..2fb33a9a
+--- /dev/null
++++ b/packages/app/src/screens/workspace/workspace-screen.test.tsx
+@@ -0,0 +1,79 @@
++import { describe, expect, it, vi } from "vitest";
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++import {
++  fetchPassportDispatchDashboardAvailability,
++  type PassportDispatchDashboardAvailability,
++} from "@/runtime/passport-dispatch-dashboard";
++
++const splitContainerSourcePath = fileURLToPath(
++  new URL("../../components/split-container.tsx", import.meta.url),
++);
++const workspaceScreenSourcePath = fileURLToPath(new URL("./workspace-screen.tsx", import.meta.url));
++
++describe("Passport Dispatch Dashboard availability client", () => {
++  it("queries the same-origin current-dashboard endpoint with an encoded cwd", async () => {
++    const payload: PassportDispatchDashboardAvailability = {
++      available: true,
++      runId: "20260506T081555540696Z",
++      url: "/dispatch-dashboard/20260506T081555540696Z/",
++      label: "Dispatch Dashboard",
++    };
++    const fetchImpl = vi.fn(async () => ({
++      ok: true,
++      json: async () => payload,
++    })) as unknown as typeof fetch;
++
++    await expect(
++      fetchPassportDispatchDashboardAvailability({
++        cwd: "/Users/example/Project With Spaces",
++        fetchImpl,
++      }),
++    ).resolves.toEqual(payload);
++
++    expect(fetchImpl).toHaveBeenCalledWith(
++      "/api/dispatch/dashboard/current?cwd=%2FUsers%2Fexample%2FProject%20With%20Spaces",
++      { credentials: "include" },
++    );
++  });
++
++  it("fails closed when the availability request fails", async () => {
++    const fetchImpl = vi.fn(async () => ({
++      ok: false,
++      json: async () => ({ available: true, url: "http://127.0.0.1:9876" }),
++    })) as unknown as typeof fetch;
++
++    await expect(
++      fetchPassportDispatchDashboardAvailability({
++        cwd: "/Users/example/Project",
++        fetchImpl,
++      }),
++    ).resolves.toEqual({ available: false });
++  });
++});
++
++describe("SplitContainer Dispatch Dashboard tab-row contract", () => {
++  it("forwards dashboard action props into split-pane desktop tab rows", () => {
++    const source = readFileSync(splitContainerSourcePath, "utf8");
++    const splitPaneTabRowRender = source.match(
++      /<WorkspaceDesktopTabsRow[\s\S]*?tabDropPreviewIndex=\{[\s\S]*?\}\s*\/>/,
++    )?.[0];
++
++    expect(splitPaneTabRowRender).toContain("dispatchDashboardAction={dispatchDashboardAction}");
++    expect(splitPaneTabRowRender).toContain(
++      "onOpenDispatchDashboard={onOpenDispatchDashboard}",
++    );
++  });
++
++  it("receives dashboard action props from the workspace screen", () => {
++    const source = readFileSync(workspaceScreenSourcePath, "utf8");
++    const splitContainerRender = source.match(
++      /<SplitContainer[\s\S]*?renderPaneEmptyState=\{renderSplitPaneEmptyState\}\s*\/>/,
++    )?.[0];
++
++    expect(splitContainerRender).toContain("dispatchDashboardAction={dispatchDashboardAction}");
++    expect(splitContainerRender).toContain(
++      "onOpenDispatchDashboard={handleOpenDispatchDashboard}",
++    );
++  });
++});
+diff --git a/packages/app/src/screens/workspace/workspace-screen.tsx b/packages/app/src/screens/workspace/workspace-screen.tsx
+index 38df733b..a59fae96 100644
+--- a/packages/app/src/screens/workspace/workspace-screen.tsx
++++ b/packages/app/src/screens/workspace/workspace-screen.tsx
+@@ -106,6 +106,7 @@ import {
+   resolveWorkspaceRouteId,
+   type WorkspaceExecutionAuthorityResult,
+ } from "@/utils/workspace-execution";
++import { fetchPassportDispatchDashboardAvailability } from "@/runtime/passport-dispatch-dashboard";
+ import {
+   WorkspaceTabPresentationResolver,
+   WorkspaceTabIcon,
+@@ -156,6 +157,7 @@ import { useContainerWidthBelow } from "@/hooks/use-container-width";
+ import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
+ 
+ const TERMINALS_QUERY_STALE_TIME = 5_000;
++const DISPATCH_DASHBOARD_QUERY_STALE_TIME = 5_000;
+ const WORKSPACE_SETUP_AUTO_OPEN_WINDOW_MS = 30_000;
+ const EMPTY_UI_TABS: WorkspaceTab[] = [];
+ const EMPTY_PINNED_AGENT_IDS = new Set<string>();
+@@ -3078,7 +3080,33 @@ function WorkspaceScreenContent({
+     [createTerminalMutation.isPending, pendingTerminalCreateInput],
+   );
+   const showCreateBrowserTab = getIsElectron();
++  const dispatchDashboardQuery = useQuery({
++    queryKey: ["passport-dispatch-dashboard", workspaceDirectory] as const,
++    enabled: Boolean(isRouteFocused && !isMobile && showCreateBrowserTab && workspaceDirectory),
++    queryFn: () => fetchPassportDispatchDashboardAvailability({ cwd: workspaceDirectory }),
++    staleTime: DISPATCH_DASHBOARD_QUERY_STALE_TIME,
++    refetchInterval: DISPATCH_DASHBOARD_QUERY_STALE_TIME,
++  });
++  const dispatchDashboardAction = useMemo(() => {
++    const availability = dispatchDashboardQuery.data;
++    if (!availability?.available) {
++      return null;
++    }
++    return {
++      label: availability.label,
++      url: availability.url,
++    };
++  }, [dispatchDashboardQuery.data]);
+   const focusedPaneIdOrUndefined = useMemo(() => focusedPaneId ?? undefined, [focusedPaneId]);
++  const handleOpenDispatchDashboard = useCallback(
++    (input: { paneId?: string; url: string }) => {
++      if (input.paneId && persistenceKey) {
++        focusWorkspacePane(persistenceKey, input.paneId);
++      }
++      handleOpenUrlInBrowserTab(input.url);
++    },
++    [focusWorkspacePane, handleOpenUrlInBrowserTab, persistenceKey],
++  );
+   const desktopFocusModeEnabled = useMemo(
+     () => isFocusModeEnabled && !isMobile,
+     [isFocusModeEnabled, isMobile],
+@@ -3111,6 +3139,8 @@ function WorkspaceScreenContent({
+         onCreateDraftTab={handleCreateDraftTab}
+         onCreateTerminalTab={handleCreateTerminal}
+         onCreateBrowserTab={handleCreateBrowserTab}
++        dispatchDashboardAction={dispatchDashboardAction}
++        onOpenDispatchDashboard={handleOpenDispatchDashboard}
+         showCreateBrowserTab={showCreateBrowserTab}
+         buildPaneContentModel={buildDesktopPaneContentModel}
+         onFocusPane={handleFocusPane}
+@@ -3145,6 +3175,8 @@ function WorkspaceScreenContent({
+     handleCreateDraftTab,
+     handleCreateTerminal,
+     handleCreateBrowserTab,
++    dispatchDashboardAction,
++    handleOpenDispatchDashboard,
+     showCreateBrowserTab,
+     buildDesktopPaneContentModel,
+     handleFocusPane,
+@@ -3245,6 +3277,8 @@ function WorkspaceScreenContent({
+                   onCreateDraftTab={handleCreateDraftTab}
+                   onCreateTerminalTab={handleCreateTerminal}
+                   onCreateBrowserTab={handleCreateBrowserTab}
++                  dispatchDashboardAction={dispatchDashboardAction}
++                  onOpenDispatchDashboard={handleOpenDispatchDashboard}
+                   showCreateBrowserTab={showCreateBrowserTab}
+                   disableCreateTerminal={createTerminalMutation.isPending}
+                   isWaitingOnTerminalReadiness={pendingTerminalCreateInput !== null}

@@ -2,6 +2,8 @@ import fastify, { type FastifyInstance } from "fastify";
 import { registerAuthRoutes } from "./auth/routes";
 import { loadConfig, type PassportConfig } from "./config";
 import { createPassportDb } from "./db";
+import { registerDispatchDashboardRoutes } from "./dispatch-dashboard/routes";
+import { createDispatchDashboardService } from "./dispatch-dashboard/service";
 import { registerMachineRoutes } from "./machines/routes";
 import { registerAdminUiRoutes } from "./web/admin";
 import { registerWorkspaceStaticRoutes } from "./web/static";
@@ -37,6 +39,16 @@ export function buildServer(config: PassportConfig = loadConfig()): FastifyInsta
     adminUser: config.operatorName,
     db,
     localAuthBypass: config.localAuthBypass,
+    sessionSecret: config.sessionSecret
+  });
+  void registerDispatchDashboardRoutes(server, {
+    db,
+    localAuthBypass: config.localAuthBypass,
+    operatorName: config.operatorName,
+    service: createDispatchDashboardService({
+      allowedRepoRoots: config.dispatchDashboardRepoRoots,
+      cliPath: config.dispatchEngineCliPath
+    }),
     sessionSecret: config.sessionSecret
   });
   void registerAdminUiRoutes(server, {

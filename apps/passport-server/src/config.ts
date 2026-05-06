@@ -1,3 +1,6 @@
+import os from "node:os";
+import path from "node:path";
+
 export interface PassportConfig {
   nodeEnv: string;
   host: string;
@@ -10,6 +13,8 @@ export interface PassportConfig {
   sessionSecret: string;
   sessionTtlSeconds: number;
   staticDir: string;
+  dispatchDashboardRepoRoots: string[];
+  dispatchEngineCliPath: string;
 }
 
 const DEFAULT_OPERATOR_NAME = "operator";
@@ -63,6 +68,21 @@ function parsePositiveInteger(
   return parsed;
 }
 
+function parsePathList(value: string | undefined): string[] {
+  if (value === undefined || value.trim() === "") {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+}
+
+function defaultDispatchEngineCliPath(): string {
+  return path.join(os.homedir(), ".codex", "skills", "dispatch-engine", "scripts", "de.py");
+}
+
 function requiredSecret(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`${name} is required.`);
@@ -106,6 +126,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PassportConfig
       env.PASSPORT_SESSION_TTL_SECONDS,
       DEFAULT_SESSION_TTL_SECONDS
     ),
-    staticDir: env.PASSPORT_STATIC_DIR || "./public"
+    staticDir: env.PASSPORT_STATIC_DIR || "./public",
+    dispatchDashboardRepoRoots: parsePathList(env.PASSPORT_DASHBOARD_REPO_ROOTS),
+    dispatchEngineCliPath: env.PASSPORT_DISPATCH_ENGINE_CLI || defaultDispatchEngineCliPath()
   };
 }
