@@ -2,13 +2,44 @@
 language: en-US
 audience: operator
 doc_type: runbook
-updated: 2026-05-04
+updated: 2026-10-02
 ---
 
 # Development-Machine Deployment
 
 This runbook describes the verified development deployment shape without
 recording machine credentials or secret values.
+
+## HK Retirement (2026-10-02)
+
+The operator requested removal of Passport from HK Tencent, with no database
+retention. The previously stopped deployment was removed on 2026-10-02:
+
+- Deleted `/home/ubuntu/Projects/paseo-passport`, including dependencies,
+  generated builds, `data/passport.sqlite`, the startup script, `.env`, and
+  `.env` backups. No database or secret recovery copy was retained.
+- Deleted `/etc/systemd/system/paseo-passport.service` and reloaded systemd.
+- Confirmed the unit is `not-found` and ports `6867` and `6868` have no listener.
+- Preserved the active subscription Caddy service, Xray, Traffic Panel,
+  Clash Sub Hub, and LibreSpeed. Shared Caddy configuration was not changed.
+- Recovered approximately 2.91 GiB; no shared npm or download cache was removed.
+
+Before deletion, the deployed outer repository matched remote `main` commit
+`02ac5400f37bb4dabbc8bb68fa55647a88f2e2e0`. The 15 modified or untracked
+upstream source files matched, byte for byte, a clean checkout of
+`15a2e3bdcbefda97587f74e499d6b81a278d458c` with both committed patches applied:
+`paseo-web-passport-hosts.patch` and `paseo-web-dispatch-dashboard-tab.patch`.
+There were no additional uncommitted source changes to save. Database,
+environment values, logs, and dependencies were not exported to Git.
+
+Validation: clean-checkout patch application, all 15 source-file comparisons,
+`git diff --check`, remote commit verification, filesystem absence, systemd
+state, listeners, and retained service states. Application build, tests, and
+browser smoke were not rerun because no application code or UI changed and
+the deployment was being removed, not released.
+
+The sections below describe the historical deployment and are reference only;
+they do not authorize redeployment or recreation of the discarded database.
 
 ## Layout
 

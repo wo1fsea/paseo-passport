@@ -14,12 +14,16 @@ from the public app.
 
 ## Current Status
 
+The HK deployment was removed on 2026-10-02, including its database and
+environment files. Source remains available in this repository; see
+[the retirement record](docs/deployment-development-machine.md#hk-retirement-2026-10-02).
+
 The single-user MVP is implemented and locally validated. Passport now serves a
 self-hosted upstream Paseo web build behind pure TOTP authentication, keeps a
 server-side machine registry, and injects active registered hosts into the
 upstream Paseo workspace.
 
-Deployment evidence from 2026-05-04:
+Historical deployment evidence from 2026-05-04:
 
 - Local build/test validation is green.
 - HK development deployment is running behind Caddy at

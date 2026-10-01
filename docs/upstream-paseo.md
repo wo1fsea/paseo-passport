@@ -2,7 +2,7 @@
 language: en-US
 audience: developer
 doc_type: provenance
-updated: 2026-05-06
+updated: 2026-10-02
 ---
 
 # Upstream Paseo
@@ -209,6 +209,9 @@ provider credentials, or machine-specific upstream config. Use placeholders in
 notes and keep operator-only values outside git.
 
 ## Deployment Notes
+
+The HK deployment was removed on 2026-10-02. The following layout is historical;
+see [the retirement record](deployment-development-machine.md#hk-retirement-2026-10-02).
 
 The verified HK deployment uses Passport as a loopback-only Node service behind
 Caddy:
